@@ -1,0 +1,44 @@
+[project]
+name = "sabor-da-terra"
+version = "0.1.0"
+description = "Assistente inteligente para gestão da Cooperativa Sabor da Terra (FastAPI + Google ADK + RAG)."
+readme = "README.md"
+requires-python = ">=3.12"
+
+# Dependências da etapa atual (backend + configuração).
+dependencies = [
+    "fastapi>=0.162",
+    "uvicorn[standard]>=0.54",
+    "pydantic-settings>=2.16",
+]
+
+[project.optional-dependencies]
+# Etapa dos agentes: pip install -e ".[ai]"
+# O google-adk já traz o google-genai (SDK do Gemini) na versão compatível.
+ai = [
+    "google-adk>=2.14,<3",
+]
+# Etapa do RAG: pip install -e ".[rag]"
+rag = [
+    "chromadb>=1.5,<2",
+    "pypdf>=7.1",
+    "python-docx>=1.2",
+]
+# Migração futura para a nuvem: pip install -e ".[gcs]"
+gcs = [
+    "google-cloud-storage>=3.17",
+]
+# Testes: pip install -e ".[dev]"
+dev = [
+    "pytest>=9",
+    "httpx>=0.28",
+]
+
+# O projeto é uma aplicação (não uma biblioteca): o pyproject serve para declarar
+# dependências. O código é executado a partir da raiz do repositório.
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

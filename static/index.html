@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sabor da Terra</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Sabor da Terra</h1>
+    <p class="status" id="status" data-state="checking">
+      <span class="status__dot" aria-hidden="true"></span>
+      <span id="status-text">Verificando o servidor…</span>
+    </p>
+  </header>
+
+  <main class="chat">
+    <ol class="messages" id="messages" aria-live="polite">
+      <li class="message message--assistant">
+        Olá! O assistente da cooperativa ainda está em construção. Em breve você poderá
+        registrar pedidos, consultar documentos e gerar resumos de produtores por aqui.
+      </li>
+    </ol>
+
+    <form class="composer" id="composer">
+      <label class="visually-hidden" for="input">Mensagem</label>
+      <input id="input" type="text" placeholder="O chat será habilitado na etapa dos agentes" disabled>
+      <button type="submit" disabled>Enviar</button>
+    </form>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+:root {
+  --bg: #f4f7f3;
+  --surface: #ffffff;
+  --ink: #1d2a21;
+  --ink-soft: #5a6b5f;
+  --line: #d8e0d6;
+  --leaf: #2d6a3e;
+  --guava: #c4405f;
+  --ok: #2d6a3e;
+  --warn: #b8791a;
+  --fail: #b3261e;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.5;
+}
+
+.topbar {
+  width: 100%;
+  max-width: 44rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1rem;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  /* Único acento de marca: a goiaba */
+  border-left: 0.4rem solid var(--guava);
+  padding-left: 0.65rem;
+}
+
+.status {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.status__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--warn);
+}
+.status[data-state="ok"] .status__dot { background: var(--ok); }
+.status[data-state="error"] .status__dot { background: var(--fail); }
+
+.chat {
+  width: 100%;
+  max-width: 44rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 1rem 1.5rem;
+}
+
+.messages {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+}
+
+.message { max-width: 36rem; }
+.message--assistant { align-self: flex-start; }
+
+.composer { display: flex; gap: 0.5rem; }
+
+.composer input {
+  flex: 1;
+  padding: 0.7rem 0.85rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.composer button {
+  padding: 0.7rem 1.25rem;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--leaf);
+  border: 0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.composer :disabled { opacity: 0.55; cursor: not-allowed; }
+
+:focus-visible { outline: 3px solid var(--leaf); outline-offset: 2px; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

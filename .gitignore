@@ -1,0 +1,25 @@
+# Segredos
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Índice vetorial e logs gerados em execução
+.vectorstore/
+logs/
+
+# Editores / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
