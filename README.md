@@ -2,7 +2,7 @@
 
 **Assistente inteligente para gestão de cooperativa agrícola.**
 
-Projeto intermediário da disciplina de IA Generativa e Agentes (Universidade de Pernambuco, Campus Garanhuns, em parceria com a Sauter Tecnologia). O desafio é construir um assistente de IA para a Cooperativa Sabor da Terra, uma cooperativa **fictícia** de produtores rurais do Agreste Meridional de Pernambuco.
+Projeto intermediário da formação em IA Generativa e Agentes (Universidade de Pernambuco, Campus Garanhuns, em parceria com a Sauter Tecnologia). O desafio é construir um assistente de IA para a Cooperativa Sabor da Terra, uma cooperativa **fictícia** de produtores rurais do Agreste Meridional de Pernambuco.
 
 ---
 
