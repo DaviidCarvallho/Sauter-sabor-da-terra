@@ -1,35 +1,93 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sabor da Terra</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <title>Sabor da Terra – Assistente da cooperativa</title>
+  <meta name="description" content="Assistente de IA para pedidos, documentos e produtores da cooperativa Sabor da Terra.">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="topbar">
-    <h1>Sabor da Terra</h1>
-    <p class="status" id="status" data-state="checking">
-      <span class="status__dot" aria-hidden="true"></span>
-      <span id="status-text">Verificando o servidor…</span>
-    </p>
-  </header>
+  <a class="skip-link" href="#mensagem">Ir para o campo de mensagem</a>
 
-  <main class="chat">
-    <ol class="messages" id="messages" aria-live="polite">
-      <li class="message message--assistant">
-        Olá! O assistente da cooperativa ainda está em construção. Em breve você poderá
-        registrar pedidos, consultar documentos e gerar resumos de produtores por aqui.
-      </li>
-    </ol>
+  <div class="app">
+    <aside class="painel" aria-label="Atalhos e estado do sistema">
+      <div class="marca">
+        <span class="marca-selo" aria-hidden="true">ST</span>
+        <div>
+          <h1 class="marca-nome">Sabor da Terra</h1>
+          <p class="marca-sub">Assistente da cooperativa</p>
+        </div>
+      </div>
 
-    <form class="composer" id="composer">
-      <label class="visually-hidden" for="input">Mensagem</label>
-      <input id="input" type="text" placeholder="O chat será habilitado na etapa dos agentes" disabled>
-      <button type="submit" disabled>Enviar</button>
-    </form>
-  </main>
+      <p id="status-servidor" class="status" data-estado="verificando" role="status">
+        <span class="status-ponto" aria-hidden="true"></span>
+        <span id="status-texto">Verificando servidor…</span>
+      </p>
 
-  <script src="/js/app.js"></script>
+      <section class="atalhos" aria-labelledby="atalhos-titulo">
+        <h2 id="atalhos-titulo" class="painel-titulo">Experimente perguntar</h2>
+        <ul class="atalhos-lista">
+          <li>
+            <button type="button" class="atalho" data-texto="Preciso de 40 kg de morango e 20 kg de queijo coalho para sexta, pedido do Restaurante Brasa.">
+              <span class="atalho-nome">Triar um pedido</span>
+              <span class="atalho-ex">40 kg de morango e 20 kg de queijo coalho para sexta…</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="atalho" data-texto="Quais produtores têm certificação orgânica vigente para mel?">
+              <span class="atalho-nome">Consultar documentos</span>
+              <span class="atalho-ex">Quais produtores têm certificação orgânica para mel?</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="atalho" data-texto="Qual é o prazo de validade do contrato com a distribuidora de Recife?">
+              <span class="atalho-nome">Pergunta sem documento</span>
+              <span class="atalho-ex">Prazo do contrato com a distribuidora de Recife</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="atalho" data-texto="Gere o resumo do mês do produtor Antônio Silva, com vendas e pendências.">
+              <span class="atalho-nome">Resumo de produtor</span>
+              <span class="atalho-ex">Vendas e pendências do mês de um produtor</span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      <button type="button" id="nova-conversa" class="btn-secundario">Nova conversa</button>
+    </aside>
+
+    <main class="chat" aria-label="Conversa com o assistente">
+      <div id="transcricao" class="transcricao" role="log" aria-live="polite" aria-relevant="additions" aria-label="Mensagens da conversa" tabindex="0">
+        <div id="vazio" class="vazio">
+          <h2>Como posso ajudar hoje?</h2>
+          <p>Escreva um pedido em linguagem normal, pergunte sobre certificações e contratos ou peça o resumo de um produtor. Os atalhos ao lado preenchem exemplos.</p>
+        </div>
+      </div>
+
+      <div id="faixa-erro" class="faixa-erro" role="alert" hidden>
+        <p id="faixa-erro-texto"></p>
+        <div class="faixa-erro-acoes">
+          <button type="button" id="tentar-novamente" class="btn-secundario">Tentar de novo</button>
+          <button type="button" id="fechar-erro" class="btn-link">Dispensar</button>
+        </div>
+      </div>
+
+      <form id="formulario" class="composer" autocomplete="off">
+        <label for="mensagem" class="sr-only">Mensagem para o assistente</label>
+        <textarea id="mensagem" name="mensagem" rows="1" maxlength="4000"
+          placeholder="Escreva sua mensagem. Enter envia, Shift+Enter pula linha."
+          aria-describedby="dica-composer"></textarea>
+        <button type="submit" id="enviar" class="btn-primario">Enviar</button>
+        <p id="dica-composer" class="composer-dica">
+          O assistente pode errar. Confira alertas e fontes antes de agir.
+          <span id="contador" aria-hidden="true"></span>
+        </p>
+      </form>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
 </body>
 </html>
