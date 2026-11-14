@@ -1,541 +1,544 @@
-# Contratos Arquiteturais — Sabor da Terra
+# Contratos de Integração
 
-Este documento define os contratos de comunicação e integração entre as camadas e os componentes do projeto Sabor da Terra. Seu objetivo é estabelecer interfaces comuns para o desenvolvimento independente dos módulos, reduzir inconsistências e facilitar a integração das entregas.
+Este documento estabelece os contratos de comunicação e integração entre os componentes do projeto **Sauter – Sabor da Terra**, com o objetivo de padronizar as responsabilidades, entradas, saídas e dependências entre os módulos desenvolvidos pela equipe.
 
-Os contratos aqui descritos representam a proposta inicial de integração e devem ser alinhados com os respectivos responsáveis antes de serem considerados definitivos.
+Os contratos devem ser utilizados como referência durante a implementação e integração dos componentes, evitando dependências indevidas entre camadas, duplicação de responsabilidades e inconsistências na comunicação entre os módulos.
+
+Os detalhes específicos de implementação devem respeitar a arquitetura definida em `docs/ESTRUTURA.md`.
 
 ---
 
-## 1. Objetivos
+## 1. Visão geral da arquitetura
 
-Estabelecer padrões para:
+A aplicação é organizada em camadas com responsabilidades bem definidas:
 
-- Comunicação entre o agente principal e os agentes especializados.
-- Comunicação entre agentes, ferramentas e serviços.
-- Comunicação entre serviços, repositórios e modelos.
-- Integração entre o módulo RAG e o agente de Documentos.
-- Comunicação HTTP entre frontend e backend.
-- Padronização de respostas, erros, fontes e sessões.
-- Definição das responsabilidades de cada camada.
+- **API:** recebe e valida as requisições HTTP e encaminha as operações para os serviços.
+- **Services:** concentram as regras de negócio determinísticas e coordenam o acesso aos dados.
+- **Agents:** interpretam as solicitações em linguagem natural, decidem quais especialistas devem ser acionados e elaboram as respostas.
+- **Tools:** disponibilizam funções para os agentes, atuando como adaptadores entre os agentes e os serviços.
+- **Repositories:** acessam e transformam os dados estruturados, como CSV e JSON.
+- **RAG:** realiza a ingestão, indexação e recuperação de informações presentes em documentos.
+- **Storage:** abstrai o acesso físico aos arquivos, permitindo diferentes implementações de armazenamento.
 
-## 2. Visão geral da arquitetura
+O fluxo geral de dependências e comunicação é:
 
-A aplicação segue uma arquitetura em camadas, na qual cada componente possui responsabilidades específicas.
+`API → chat_service → agents → tools → services → repositories / RAG → storage`
 
-```mermaid
-flowchart TD
-    USER["Usuário"]
-    FRONT["Frontend"]
-    API["FastAPI"]
-    SERVICE["Services"]
-    ROOT["Agente Principal"]
-    ORDERS["Agente de Pedidos"]
-    DOCS["Agente de Documentos"]
-    PRODUCERS["Agente de Produtores"]
-    TOOLS["Tools"]
-    REPOS["Repositories"]
-    RAG["RAG"]
-    STORAGE["Storage"]
+Essa representação descreve o fluxo principal de comunicação, não uma dependência obrigatória entre todos os componentes. Por exemplo, o `chat_service` possui responsabilidade específica de integração com o ADK, enquanto os demais serviços de domínio não devem depender dos agentes.
 
-    USER --> FRONT
-    FRONT --> API
-    API --> SERVICE
-    SERVICE --> ROOT
+### 1.1. Princípios de integração
 
-    ROOT --> ORDERS
-    ROOT --> DOCS
-    ROOT --> PRODUCERS
+1. Cada componente deve conhecer somente as responsabilidades necessárias para executar sua função.
+2. A camada de API não deve implementar regras de negócio.
+3. Os agentes não devem conhecer detalhes de HTTP, repositórios ou armazenamento físico.
+4. As tools devem atuar como interfaces entre agentes e serviços, sem reproduzir regras de negócio.
+5. As regras de negócio determinísticas devem ser implementadas nos serviços, e não delegadas exclusivamente ao modelo de linguagem.
+6. Os repositórios devem cuidar do acesso e da transformação dos dados, sem implementar regras de negócio.
+7. Somente a camada `storage/` deve conhecer os detalhes físicos de acesso aos arquivos.
+8. O acesso aos arquivos deve utilizar chaves lógicas, sem expor caminhos físicos às demais camadas.
+9. Os modelos Pydantic devem representar e validar os dados que transitam entre as camadas, sem concentrar regras de negócio.
+10. A comunicação entre os componentes deve respeitar os contratos definidos neste documento.
 
-    ORDERS --> TOOLS
-    DOCS --> TOOLS
-    PRODUCERS --> TOOLS
+---
 
-    TOOLS --> SERVICE
-    SERVICE --> REPOS
-    SERVICE --> RAG
+## 2. Contrato entre o agente orquestrador e os agentes especialistas
 
-    REPOS --> STORAGE
-    RAG --> STORAGE
+O agente principal, localizado em `agents/agent.py`, é responsável por interpretar a solicitação do usuário, identificar os domínios envolvidos e acionar os agentes especialistas necessários.
+
+Os agentes especialistas são:
+
+- `documentos_agent.py`: responsável por solicitações relacionadas a documentos e informações presentes nos materiais da cooperativa.
+- `pedidos_agent.py`: responsável por solicitações relacionadas a pedidos, produtos, disponibilidade e informações comerciais.
+- `produtores_agent.py`: responsável por solicitações relacionadas aos produtores e suas informações.
+
+A comunicação entre o agente principal e os especialistas deve ocorrer por meio de `AgentTool`, conforme definido na arquitetura.
+
+### 2.1. Entrada dos agentes especialistas
+
+O agente especialista deve receber exclusivamente o texto da chamada realizada pelo agente orquestrador.
+
+Exemplo:
+
+```text
+Consulte a disponibilidade de 30 kg de queijo coalho para sexta-feira e informe possíveis produtores.
 ```
 
-### 2.1. Responsabilidades das camadas
+**Não deve ser encaminhado automaticamente o histórico completo da conversa ao agente especialista.**
 
-| Camada | Responsabilidade |
-|---|---|
-| API | Receber requisições HTTP, validar entradas e retornar respostas. |
-| Services | Executar regras de negócio e coordenar operações. |
-| Agents | Interpretar solicitações e decidir quais ferramentas utilizar. |
-| Tools | Disponibilizar operações controladas aos agentes. |
-| Repositories | Consultar e manipular dados estruturados. |
-| RAG | Recuperar informações relevantes dos documentos. |
-| Storage | Abstrair o acesso aos arquivos e ao armazenamento. |
-| Models | Definir contratos e estruturas de dados com Pydantic. |
+Essa decisão é intencional e tem como finalidade limitar o compartilhamento de informações entre os agentes, contribuindo para a proteção dos dados e para a redução da exposição de informações que não sejam necessárias à execução da tarefa.
 
-**Princípio arquitetural:** os agentes interpretam as solicitações e coordenam operações, enquanto os serviços e o código determinístico são responsáveis pelas validações, cálculos e regras de negócio.
+Caso alguma informação de uma interação anterior seja indispensável para a solicitação atual, o próprio agente orquestrador deverá incorporá-la explicitamente ao texto da chamada, compartilhando apenas o contexto estritamente necessário.
+
+### 2.2. Responsabilidades do agente orquestrador
+
+- Interpretar a solicitação original do usuário.
+- Identificar quais domínios estão relacionados à solicitação.
+- Selecionar e acionar um ou mais agentes especialistas.
+- Formular chamadas com informações suficientes para a execução da tarefa.
+- Evitar encaminhar informações desnecessárias aos especialistas.
+- Combinar e organizar as respostas recebidas.
+- Produzir uma resposta final coerente para o usuário.
+
+### 2.3. Responsabilidades dos agentes especialistas
+
+- Atuar exclusivamente no domínio de sua responsabilidade.
+- Interpretar o texto recebido do agente orquestrador.
+- Acionar as tools disponíveis quando necessário.
+- Utilizar os resultados fornecidos pelos serviços para elaborar suas respostas.
+- Informar quando não houver dados suficientes para responder.
+- Não inventar informações que não estejam presentes nos dados ou documentos consultados.
+
+### 2.4. Saída dos agentes especialistas
+
+O agente especialista deve retornar uma resposta textual ao agente orquestrador, contendo as informações relevantes obtidas durante a execução.
+
+A resposta deve:
+
+- Ser objetiva e relacionada à solicitação recebida.
+- Apresentar resultados e alertas retornados pelos serviços.
+- Indicar informações ausentes ou insuficientes quando necessário.
+- Não apresentar como confirmado aquilo que não foi validado pelos dados.
+
+Não é necessário estabelecer um formato genérico de retorno independente do mecanismo de execução do ADK. A integração deve respeitar o formato de resposta utilizado pelo framework, cabendo ao agente orquestrador interpretar e combinar os resultados.
 
 ---
 
-## 3. Contrato entre agente principal e agentes especializados
+## 3. Contrato entre agentes, tools e serviços
 
-**Responsáveis pelo alinhamento:** responsável pela arquitetura e David.
+As tools, localizadas em `agents/tools.py`, representam as funções que os agentes podem executar para consultar ou manipular informações da aplicação.
 
-O agente principal é responsável por interpretar a solicitação do usuário, identificar a intenção e direcionar a execução para o agente especializado correspondente.
+Elas devem funcionar como adaptadores entre a interpretação realizada pelos agentes e as operações determinísticas disponibilizadas pelos serviços.
 
-Os agentes especializados não devem depender diretamente do frontend ou das rotas HTTP.
+### 3.1. Responsabilidades das tools
 
-### 3.1. Responsabilidades do agente principal
+- Disponibilizar funções com nomes e descrições claros para os agentes.
+- Declarar parâmetros e tipos de dados de maneira explícita.
+- Validar os parâmetros de entrada quando necessário.
+- Encaminhar a solicitação ao serviço responsável.
+- Retornar os resultados fornecidos pelo serviço em formato compreensível para o agente.
+- Comunicar erros de execução de maneira adequada.
 
-- Receber a solicitação do usuário.
-- Identificar o domínio da solicitação.
-- Encaminhar a demanda ao agente especializado.
-- Consolidar os resultados recebidos.
-- Produzir uma resposta coerente para o usuário.
-- Solicitar esclarecimentos quando necessário.
+As tools não devem:
 
-### 3.2. Agentes especializados
+- Implementar regras de negócio.
+- Acessar arquivos diretamente.
+- Consultar repositórios diretamente.
+- Implementar operações de leitura de CSV ou JSON.
+- Duplicar funcionalidades já existentes nos serviços.
 
-| Agente | Responsabilidade | Domínio |
-|---|---|---|
-| Pedidos | Interpretar, classificar e analisar pedidos. | Pedidos e disponibilidade. |
-| Documentos | Recuperar informações documentais e apresentar fontes. | Certificações, contratos, fichas técnicas e lotes. |
-| Produtores | Consultar informações individuais e produzir relatórios. | Produtores, vendas e pendências. |
+### 3.2. Responsabilidades dos serviços
 
-### 3.3. Contrato de entrada
+Os serviços, localizados em `services/`, concentram as regras de negócio determinísticas da aplicação.
 
-Todos os agentes devem receber o contexto necessário para executar suas responsabilidades.
+Eles devem:
 
-Proposta de estrutura lógica:
+- Receber os parâmetros encaminhados pelas tools ou pela API.
+- Executar validações e regras de negócio.
+- Coordenar consultas aos repositórios e ao RAG.
+- Consolidar os resultados obtidos.
+- Retornar informações estruturadas para o componente solicitante.
+- Informar situações em que os dados disponíveis não sejam suficientes para concluir uma operação.
 
-```python
-{
-    "message": "Quais produtores possuem mel disponível?",
-    "session_id": "session-123",
-    "context": {
-        "user_id": None,
-        "conversation_history": []
-    }
-}
+Os serviços de domínio não devem depender dos agentes, conhecer prompts ou implementar comunicação HTTP.
+
+**Exceção arquitetural:** o `chat_service.py` possui responsabilidade específica de integração entre a API e o agente principal. Ele deve gerenciar a sessão da conversa e executar o agente por meio do ADK Runner. Essa exceção não deve ser reproduzida nos demais serviços.
+
+### 3.3. Exemplo de fluxo
+
+Para uma solicitação como:
+
+```text
+Preciso de 30 kg de queijo coalho e algumas caixas de goiaba para sexta-feira.
 ```
 
-Os campos representam uma proposta de interface lógica, não necessariamente os argumentos literais do Google ADK.
+O fluxo esperado é:
 
-### 3.4. Contrato de saída
+1. O agente orquestrador identifica que a solicitação está relacionada a pedidos.
+2. O agente orquestrador aciona o especialista de pedidos, encaminhando somente o texto necessário para a execução.
+3. O especialista interpreta os produtos, quantidades e prazo.
+4. O especialista aciona a tool responsável pela consulta de disponibilidade.
+5. A tool encaminha os parâmetros ao `pedido_service`.
+6. O serviço consulta os repositórios necessários, como `produto_repository` e `produtor_repository`.
+7. O serviço aplica as regras determinísticas, verifica os dados disponíveis e identifica alertas ou informações ausentes.
+8. A tool retorna o resultado ao agente especialista.
+9. O especialista elabora uma resposta com base nos resultados.
+10. O agente orquestrador recebe a resposta e a incorpora à resposta final.
 
-Os agentes devem retornar um resultado que permita ao agente principal compreender a execução e construir a resposta final.
-
-```python
-{
-    "success": True,
-    "message": "Foram encontrados produtores com mel disponível.",
-    "data": {},
-    "sources": [],
-    "error": None
-}
-```
-
-Regras:
-
-- `success`: indica se a operação foi executada corretamente.
-- `message`: contém o resultado em linguagem natural ou uma descrição da operação.
-- `data`: contém informações estruturadas, quando aplicável.
-- `sources`: contém referências documentais, quando aplicável.
-- `error`: descreve uma falha, quando existente.
-
-Os agentes devem evitar inventar informações que não estejam presentes nos dados ou nos resultados das ferramentas.
+A interpretação de expressões como "sexta-feira" pode ser realizada pelo modelo, mas a resolução da data deve utilizar uma referência temporal confiável, como a data atual fornecida pelo contexto ou por uma ferramenta apropriada. Não se deve depender de uma suposição temporal do modelo.
 
 ---
 
-## 4. Contrato entre agentes, ferramentas e serviços
+## 4. Contrato entre serviços, repositórios, modelos e armazenamento
 
-**Responsáveis pelo alinhamento:** responsável pela arquitetura e David.
+A comunicação entre serviços, repositórios, modelos e armazenamento deve respeitar a separação de responsabilidades estabelecida na arquitetura.
 
-As ferramentas representam os recursos disponibilizados aos agentes para consultar dados e executar operações.
+### 4.1. Models
 
-Elas devem atuar como intermediárias entre os agentes e os serviços da aplicação.
+Os modelos, localizados em `models/`, representam os dados utilizados na comunicação entre as camadas.
 
-### 4.1. Responsabilidades
+Responsabilidades:
 
-| Componente | Responsabilidade |
-|---|---|
-| Agente | Identificar quando uma operação é necessária e fornecer os parâmetros. |
-| Tool | Validar os parâmetros de entrada e encaminhar a operação. |
-| Service | Executar as regras de negócio e coordenar os dados necessários. |
-| Repository/RAG | Recuperar as informações solicitadas. |
+- Definir a estrutura dos dados.
+- Declarar os tipos dos atributos.
+- Validar os dados recebidos.
+- Padronizar os formatos de entrada e saída.
 
-### 4.2. Regras de comunicação
+Os modelos devem utilizar Pydantic e não devem conter regras de negócio ou depender de serviços, agentes e repositórios.
 
-1. Os agentes não devem acessar diretamente arquivos CSV ou JSON.
-2. Os agentes não devem implementar regras de negócio determinísticas.
-3. As ferramentas devem possuir entradas e saídas bem definidas.
-4. Os serviços devem validar os dados antes de retornar resultados.
-5. Operações que envolvam cálculos ou verificações devem ser realizadas pelo código.
-6. Falhas devem ser comunicadas de maneira estruturada, sem ocultar sua origem.
+Exemplos:
 
-### 4.3. Exemplo de fluxo
+- `chat_model.py`: estruturas de entrada e saída das operações de chat.
+- `documento_model.py`: estruturas relacionadas a documentos.
+- `pedido_model.py`: estruturas relacionadas a pedidos.
+- `produto_model.py`: estruturas relacionadas a produtos.
+- `produtor_model.py`: estruturas relacionadas a produtores.
+- `relatorio_model.py`: estruturas relacionadas a relatórios.
 
-Solicitação: "Quais produtores possuem mel disponível?"
+### 4.2. Repositories
 
-1. O agente principal identifica que a solicitação pertence ao domínio de pedidos e disponibilidade.
-2. O agente especializado identifica a necessidade de consultar produtores e disponibilidade.
-3. A ferramenta correspondente recebe os parâmetros.
-4. O serviço consulta os repositórios.
-5. O resultado é devolvido à ferramenta.
-6. O agente interpreta o resultado e formula a resposta.
+Os repositórios, localizados em `repositories/`, são responsáveis pelo acesso e pela transformação dos dados estruturados.
 
----
+Responsabilidades:
 
-## 5. Contrato entre serviços, repositórios, modelos e armazenamento
+- Ler dados disponibilizados pela camada de armazenamento.
+- Interpretar arquivos CSV e JSON.
+- Converter os registros em objetos Python ou estruturas compatíveis com os modelos.
+- Disponibilizar operações de consulta para os serviços.
+- Centralizar a lógica de acesso aos dados estruturados.
 
-**Responsáveis pelo alinhamento:** responsável pela arquitetura e Arthur.
+Os repositórios não devem implementar regras de negócio, acessar diretamente caminhos físicos ou depender dos agentes.
 
-Esta seção estabelece como os dados devem circular dentro da aplicação.
+O `storage_repository.py` possui uma função específica de leitura e interpretação de dados estruturados, como CSV e JSON. Ele não deve ser confundido com a abstração de armazenamento localizada em `storage/`.
 
-### 5.1. Models
+### 4.3. Services
 
-Os modelos Pydantic representam os contratos de dados utilizados na aplicação.
+Os serviços são responsáveis pela lógica de negócio e pela coordenação das operações da aplicação.
 
-Devem ser responsáveis por:
+Responsabilidades:
 
-- Definir os campos esperados.
-- Estabelecer tipos de dados.
-- Validar formatos e valores.
-- Definir campos obrigatórios e opcionais.
-- Padronizar estruturas de entrada e saída.
-
-Os modelos devem refletir os dados reais da cooperativa, considerando as decisões de padronização registradas em `docs/DADOS.md`.
-
-### 5.2. Repositories
-
-Os repositórios são responsáveis exclusivamente pelo acesso aos dados estruturados.
-
-Devem:
-
-- Consultar arquivos CSV e JSON.
-- Localizar registros por identificadores.
-- Retornar dados em estruturas padronizadas.
-- Isolar os detalhes de leitura e escrita dos arquivos.
-- Tratar problemas relacionados ao acesso aos dados.
-
-Os repositórios não devem conter regras de negócio ou depender dos agentes.
-
-### 5.3. Services
-
-Os serviços são responsáveis pela lógica de negócio.
-
-Devem:
-
-- Consumir os repositórios necessários.
-- Validar condições de negócio.
-- Executar cálculos determinísticos.
-- Coordenar operações entre diferentes fontes.
+- Receber dados de entrada.
+- Aplicar regras e validações de negócio.
+- Consultar um ou mais repositórios.
+- Acionar operações de recuperação documental quando necessário.
+- Consolidar informações.
 - Retornar resultados estruturados.
 
-Exemplos de regras:
+Os serviços não devem acessar arquivos diretamente, implementar lógica de transporte HTTP ou depender dos agentes de inteligência artificial.
 
-| Regra | Responsável |
-|---|---|
-| Identificar pedidos atrasados | Service |
-| Verificar disponibilidade sazonal | Service |
-| Calcular valores financeiros | Service |
-| Verificar capacidade de atendimento | Service |
-| Consultar informações de produtores | Service |
+### 4.4. Storage
 
-O modelo de linguagem não deve ser responsável por determinar esses resultados.
+A camada `storage/` abstrai o acesso físico aos arquivos.
 
-### 5.4. Storage
+Ela deve disponibilizar uma interface comum para operações como:
 
-A camada de armazenamento deve abstrair o acesso aos arquivos.
+- Verificar a existência de um arquivo.
+- Ler arquivos em bytes.
+- Ler arquivos em texto.
+- Listar chaves disponíveis.
 
-Inicialmente, o projeto utilizará armazenamento local, mantendo a possibilidade de implementação futura com Google Cloud Storage.
+As implementações, como `local_storage.py` e `gcs_storage.py`, devem respeitar a abstração definida em `base.py`.
 
-Os repositórios e o módulo RAG não devem depender de caminhos físicos específicos dos arquivos.
+Os demais componentes devem utilizar chaves lógicas para localizar os arquivos, sem conhecer diretórios ou caminhos físicos.
 
----
-
-## 6. Contrato de integração do RAG
-
-**Responsáveis pelo alinhamento:** responsável pela arquitetura e Rawan.
-
-O módulo RAG é responsável por recuperar informações relevantes dos documentos disponibilizados pela cooperativa.
-
-O agente de Documentos deve utilizar os resultados recuperados para responder às perguntas dos usuários.
-
-### 6.1. Responsabilidades do RAG
-
-- Carregar documentos PDF e DOCX.
-- Extrair e processar o conteúdo.
-- Dividir documentos em fragmentos (chunks).
-- Gerar embeddings.
-- Armazenar os vetores no ChromaDB.
-- Recuperar fragmentos relevantes para uma consulta.
-- Retornar metadados suficientes para identificar a origem das informações.
-
-### 6.2. Contrato de entrada
-
-Proposta de estrutura:
-
-```python
-{
-    "query": "Quais produtores possuem certificação orgânica vigente para mel?",
-    "top_k": 5,
-    "filters": {}
-}
-```
-
-- `query`: pergunta ou consulta textual.
-- `top_k`: quantidade máxima de resultados desejados.
-- `filters`: filtros opcionais por tipo de documento, produtor ou outros metadados disponíveis.
-
-### 6.3. Contrato de saída
-
-Cada fragmento recuperado deve possuir conteúdo e metadados de origem.
-
-```python
-{
-    "results": [
-        {
-            "content": "Trecho encontrado no documento...",
-            "metadata": {
-                "source": "certificacao_produtor_001.pdf",
-                "page": 3,
-                "document_type": "certification",
-                "producer_id": "PROD-001"
-            }
-        }
-    ]
-}
-```
-
-### 6.4. Metadados obrigatórios
-
-| Campo | Obrigatoriedade | Descrição |
-|---|---|---|
-| `source` | Obrigatório | Nome ou identificador do documento de origem. |
-| `page` | Obrigatório quando aplicável | Página de origem do fragmento. |
-| `document_type` | Recomendado | Categoria documental. |
-| `producer_id` | Quando aplicável | Identificador do produtor relacionado. |
-
-Quando a página não puder ser identificada, o sistema não deve inventar um número. Deve representar explicitamente a ausência dessa informação.
-
-### 6.5. Regras para o agente de Documentos
-
-1. Utilizar somente informações sustentadas pelos documentos recuperados.
-2. Apresentar a fonte das informações.
-3. Não inventar certificações, datas ou condições contratuais.
-4. Informar claramente quando não encontrar evidências suficientes.
-5. Diferenciar informações documentadas de interpretações.
-6. Não apresentar uma certificação como vigente sem verificar sua validade.
+Essa separação permite alterar a implementação de armazenamento sem exigir modificações nos serviços e repositórios que consomem os dados.
 
 ---
 
-## 7. Contrato HTTP do chat
+## 5. Contrato do RAG
 
-**Responsáveis pelo alinhamento:** responsável pela arquitetura e Raquel.
+O módulo RAG, localizado em `rag/`, é responsável pela ingestão, indexação e recuperação de informações presentes nos documentos da cooperativa.
 
-O frontend deve se comunicar com o backend exclusivamente por meio dos endpoints HTTP disponibilizados pela API FastAPI.
+A integração deve considerar dois fluxos distintos: ingestão documental e recuperação de informações.
 
-### 7.1. Endpoint principal
+### 5.1. Fluxo de ingestão documental
 
-| Propriedade | Definição |
-|---|---|
-| Método | POST |
-| Rota | `/api/chat` |
-| Content-Type | `application/json` |
-| Responsabilidade | Receber mensagens e retornar respostas do assistente. |
+A ingestão ocorre quando documentos são processados para disponibilizar seu conteúdo para consultas futuras.
 
-### 7.2. Contrato de entrada
+Fluxo esperado:
 
-Proposta de payload:
+```text
+ingestion
+    → document_repository
+        → document_loader
+            → chunker
+                → vector_store
+```
+
+Responsabilidades:
+
+- `ingestion.py`: coordena o processo de ingestão.
+- `document_repository.py`: localiza os documentos e disponibiliza seus conteúdos.
+- `document_loader.py`: realiza o carregamento e a extração do conteúdo dos documentos.
+- `chunker.py`: divide o conteúdo em partes menores para indexação.
+- `vector_store.py`: armazena os vetores e metadados utilizados na recuperação.
+
+O processamento deve preservar os metadados necessários para identificar a origem dos trechos indexados.
+
+### 5.2. Fluxo de recuperação
+
+A recuperação ocorre durante uma solicitação que exige informações presentes nos documentos.
+
+Fluxo esperado:
+
+```text
+documento_service
+    → retriever
+        → vector_store
+```
+
+Responsabilidades:
+
+- `documento_service.py`: recebe a solicitação e coordena a operação de consulta documental.
+- `retriever.py`: realiza a recuperação dos trechos relevantes.
+- `vector_store.py`: consulta a base vetorial e retorna os trechos e seus metadados.
+
+O serviço deve receber os resultados da recuperação e disponibilizar as informações ao componente solicitante.
+
+### 5.3. Contrato de entrada
+
+A consulta deve receber, no mínimo, uma pergunta ou texto de busca.
+
+Exemplo:
+
+```text
+Quais são as condições de armazenamento do queijo coalho?
+```
+
+Parâmetros adicionais, como quantidade de resultados ou filtros de documentos, podem ser utilizados conforme a implementação do RAG.
+
+### 5.4. Contrato de saída
+
+A recuperação deve disponibilizar os trechos relevantes e seus metadados de origem.
+
+Cada trecho recuperado deve preservar, sempre que disponível:
+
+- `content`: conteúdo textual do trecho.
+- `source`: identificação do documento de origem.
+- `page`: número da página de origem, quando aplicável e disponível.
+
+O campo `source` deve ser preservado para permitir a identificação do documento consultado. O campo `page` deve ser informado quando a estrutura do documento permitir identificar a página; caso contrário, deve ser representado como indisponível, sem inventar um número.
+
+Esses metadados são importantes para permitir rastreabilidade e apresentação das fontes ao usuário.
+
+### 5.5. Responsabilidades e restrições
+
+- O RAG deve ser utilizado para informações provenientes de documentos.
+- O acesso aos documentos deve respeitar a integração com `document_repository` e a abstração de armazenamento.
+- O `vector_store.py` deve ser o único módulo responsável por conhecer os detalhes específicos do ChromaDB e dos embeddings.
+- Os serviços devem consumir o RAG por meio das interfaces disponibilizadas, sem acessar diretamente a implementação do banco vetorial.
+- A recuperação deve retornar os metadados de origem junto aos trechos.
+- O agente não deve apresentar informações documentais como fatos confirmados quando não houver evidência recuperada suficiente.
+
+---
+
+## 6. Contrato entre API, chat_service e frontend
+
+A comunicação entre o frontend e o backend ocorre por meio da API HTTP, utilizando o endpoint de chat.
+
+### 6.1. Endpoint
+
+```http
+POST /api/chat
+```
+
+A API é responsável por receber a solicitação, validar os dados de entrada e encaminhar a operação ao `chat_service`.
+
+O controlador não deve executar diretamente o agente, acessar repositórios ou implementar regras de negócio.
+
+### 6.2. Requisição
+
+A requisição deve conter os dados necessários para identificar a conversa e a mensagem enviada pelo usuário.
+
+Exemplo ilustrativo:
 
 ```json
 {
-    "message": "Quais produtores possuem mel disponível?",
-    "session_id": "session-123"
+  "user": "Usuário",
+  "session_id": "identificador-da-sessao",
+  "message": "Quais produtos estão disponíveis nesta semana?"
 }
 ```
 
-| Campo | Tipo | Obrigatoriedade | Descrição |
-|---|---|---|---|
-| `message` | string | Obrigatório | Mensagem enviada pelo usuário. |
-| `session_id` | string ou null | Opcional | Identificador da sessão de conversa. |
+Responsabilidades dos campos:
 
-Se `session_id` não for informado, o backend deverá criar uma nova sessão.
+- `user`: identificação ou informação do usuário conforme a estrutura definida no modelo de chat.
+- `session_id`: identificador da sessão da conversa, quando existente.
+- `message`: texto enviado pelo usuário.
 
-### 7.3. Contrato de saída
+A estrutura definitiva dos campos e seus tipos deve ser mantida em conformidade com `models/chat_model.py`.
 
-Proposta de resposta:
+### 6.3. Processamento da requisição
+
+O fluxo esperado é:
+
+1. O frontend envia a mensagem para `/api/chat`.
+2. O `chat_controller.py` valida a requisição.
+3. O controlador encaminha os dados ao `chat_service.py`.
+4. O serviço recupera ou inicializa a sessão da conversa.
+5. O serviço executa o agente principal por meio do ADK Runner.
+6. O agente orquestrador decide quais especialistas devem ser acionados.
+7. Os especialistas utilizam tools e serviços para consultar as informações necessárias.
+8. O agente principal consolida as respostas.
+9. O `chat_service` organiza o resultado e o retorna à API.
+10. A API disponibiliza a resposta ao frontend.
+
+A gestão da sessão e a integração com o ADK devem permanecer no `chat_service`, e não no controlador ou nos agentes especialistas.
+
+### 6.4. Resposta
+
+A resposta deve disponibilizar a mensagem elaborada pelo agente principal e os dados necessários para a continuidade da conversa.
+
+Exemplo ilustrativo:
 
 ```json
 {
-    "session_id": "session-123",
-    "message": "Encontrei os seguintes produtores...",
-    "sources": [
-        {
-            "name": "produtores.csv",
-            "page": null
-        }
-    ],
-    "status": "success"
+  "session_id": "identificador-da-sessao",
+  "message": "Temos os seguintes produtos disponíveis...",
+  "agents_used": [
+    "pedidos_agent"
+  ],
+  "sources": [],
+  "status": "success"
 }
 ```
 
-| Campo | Tipo | Descrição |
-|---|---|---|
-| `session_id` | string | Identificador da sessão. |
-| `message` | string | Resposta apresentada ao usuário. |
-| `sources` | array | Fontes utilizadas na resposta. |
-| `status` | string | Situação do processamento. |
+Responsabilidades dos campos:
 
-A estrutura é uma proposta inicial e deve ser compatibilizada com os modelos Pydantic e com a implementação do Google ADK.
+- `session_id`: identificador da sessão utilizada.
+- `message`: resposta final apresentada ao usuário.
+- `agents_used`: identificação dos agentes especialistas acionados durante a execução.
+- `sources`: fontes documentais utilizadas, quando houver recuperação de informações pelo RAG.
+- `status`: indicação do resultado da operação.
 
-### 7.4. Apresentação de fontes
+O campo `sources` não deve ser obrigatório para todas as respostas. Solicitações respondidas exclusivamente com dados estruturados, por exemplo, podem não possuir fontes documentais.
 
-Quando uma resposta utilizar informações documentais, o frontend deverá apresentar as referências recebidas pelo backend.
+Quando houver fontes, devem ser preservadas as informações de identificação do documento e da página, quando disponível.
 
-Cada fonte deverá apresentar, quando disponível:
-
-- Nome do documento.
-- Página de origem.
-- Identificação do documento.
-
-Fontes documentais devem ser diferenciadas de dados estruturados provenientes dos repositórios.
-
-### 7.5. Sessões
-
-O backend será responsável por gerenciar o contexto das conversas.
-
-Regras iniciais:
-
-1. Cada conversa deve possuir um identificador de sessão.
-2. Mensagens da mesma sessão devem compartilhar o contexto correspondente.
-3. Sessões diferentes não devem compartilhar histórico.
-4. O frontend deve enviar o `session_id` nas mensagens subsequentes.
-5. O comportamento de persistência deve ser explicitamente definido.
-
-**Limitação atual:** as sessões são mantidas em memória. Reiniciar o servidor apaga o contexto das conversas.
-
-### 7.6. Códigos HTTP
-
-| Código | Significado | Situação |
-|---|---|---|
-| 200 | OK | Mensagem processada. |
-| 400 | Bad Request | Requisição inválida. |
-| 422 | Unprocessable Entity | Falha na validação dos dados. |
-| 500 | Internal Server Error | Erro interno inesperado. |
-| 503 | Service Unavailable | Serviço externo indisponível. |
+A nomenclatura e os tipos definitivos devem permanecer alinhados ao `chat_model.py`.
 
 ---
 
-## 8. Contrato de tratamento de erros
+## 7. Tratamento de erros e exceções
 
-Todas as camadas devem tratar erros de maneira previsível, evitando que exceções internas sejam apresentadas diretamente ao usuário.
+Os componentes devem tratar erros de acordo com suas responsabilidades, evitando que falhas internas sejam apresentadas diretamente ao usuário.
 
-### 8.1. Categorias de erros
+### 7.1. API
 
-| Categoria | Exemplo |
+A API deve:
+
+- Validar os dados recebidos.
+- Identificar erros de requisição.
+- Encaminhar exceções dos serviços para respostas HTTP apropriadas.
+- Não expor detalhes internos, caminhos físicos, credenciais ou informações sensíveis.
+
+### 7.2. Services
+
+Os serviços devem:
+
+- Identificar falhas nas operações de negócio.
+- Tratar situações de dados inexistentes ou insuficientes.
+- Propagar exceções de maneira consistente quando não puderem resolver a falha.
+- Evitar ocultar erros que comprometam a confiabilidade da resposta.
+
+### 7.3. Repositories e Storage
+
+Os repositórios e a camada de armazenamento devem:
+
+- Tratar falhas de leitura e acesso aos arquivos.
+- Identificar arquivos inexistentes ou inválidos.
+- Informar falhas de interpretação dos dados.
+- Propagar erros para a camada responsável por decidir como a operação deve prosseguir.
+
+### 7.4. Agents e Tools
+
+As tools devem comunicar falhas de execução de forma compreensível para o agente.
+
+Os agentes não devem transformar uma falha de consulta em uma informação fictícia. Quando não houver dados suficientes ou ocorrer uma falha que impeça a consulta, a resposta deve indicar a limitação.
+
+### 7.5. Padronização
+
+A API deve converter exceções conhecidas em respostas HTTP adequadas, evitando retornar detalhes técnicos internos ao frontend.
+
+Os formatos específicos de erro devem ser mantidos consistentes com os modelos e padrões adotados no backend.
+
+---
+
+## 8. Logging
+
+O registro de eventos deve utilizar a estrutura centralizada disponibilizada em `utils/logger.py`.
+
+Os componentes devem registrar informações relevantes para depuração e acompanhamento da execução, respeitando os limites de privacidade.
+
+Devem ser registrados, quando pertinentes:
+
+- Início e conclusão de operações.
+- Erros e exceções.
+- Falhas de leitura ou acesso aos dados.
+- Execução de consultas documentais.
+- Identificação dos agentes acionados.
+- Falhas de integração entre componentes.
+
+Não devem ser registrados:
+
+- Credenciais.
+- Tokens de autenticação.
+- Dados pessoais desnecessários.
+- Conteúdo sensível de conversas sem justificativa.
+- Informações que não sejam necessárias para diagnóstico ou auditoria.
+
+O logging deve permitir identificar a origem de uma falha sem expor informações desnecessárias sobre o usuário ou o conteúdo de suas interações.
+
+---
+
+## 9. Regras gerais de integração
+
+Para garantir a compatibilidade entre os componentes desenvolvidos pela equipe, devem ser observadas as seguintes regras:
+
+1. Cada integrante deve respeitar as responsabilidades da camada pela qual é responsável.
+2. Alterações em contratos compartilhados devem ser comunicadas aos integrantes envolvidos antes da integração.
+3. Os nomes de arquivos, classes, funções e atributos devem seguir as convenções definidas no projeto.
+4. Os tipos de entrada e saída devem ser explícitos sempre que possível.
+5. Os modelos Pydantic devem ser utilizados para padronizar os dados que transitam entre as camadas.
+6. Os serviços devem concentrar as regras de negócio determinísticas.
+7. As tools devem permanecer como adaptadores entre agentes e serviços.
+8. Os agentes especialistas devem receber somente o texto necessário à execução de suas chamadas, sem compartilhamento automático do histórico completo.
+9. Os repositórios não devem acessar diretamente os caminhos físicos dos arquivos.
+10. O acesso aos arquivos deve ocorrer por meio da abstração de armazenamento.
+11. A ingestão e a recuperação documental devem respeitar os fluxos definidos para o RAG.
+12. Os metadados das fontes documentais devem ser preservados durante todo o processo de recuperação.
+13. O `chat_service` deve concentrar a integração com o ADK Runner e o gerenciamento das sessões.
+14. Os serviços de domínio não devem depender dos agentes.
+15. Nenhum componente deve assumir responsabilidades pertencentes a outra camada.
+16. Mudanças em contratos devem ser refletidas na documentação e comunicadas aos responsáveis pelos módulos dependentes.
+
+---
+
+## 10. Decisões e alinhamentos pendentes
+
+Os contratos estabelecem a estrutura de integração, mas alguns detalhes devem ser confirmados entre os responsáveis pelos módulos durante a implementação.
+
+| Tema | Alinhamento necessário |
 |---|---|
-| Validação | Campo obrigatório ausente ou formato inválido. |
-| Não encontrado | Produtor ou pedido inexistente. |
-| Regra de negócio | Pedido incompatível com a disponibilidade. |
-| Armazenamento | Arquivo indisponível ou erro de leitura. |
-| RAG | Falha na recuperação documental. |
-| IA | Falha na execução do modelo ou agente. |
-| Integração | Serviço externo indisponível. |
+| Agentes especialistas | Confirmar os nomes, descrições e parâmetros das tools disponibilizadas a cada especialista. |
+| Tools | Confirmar as funções e os parâmetros necessários para cada operação de negócio. |
+| Services | Confirmar as assinaturas das funções e os modelos utilizados nas entradas e saídas. |
+| Repositories | Confirmar os formatos de retorno e as operações de consulta disponibilizadas. |
+| RAG | Confirmar o formato definitivo dos metadados e a disponibilidade da informação de página para cada tipo de documento. |
+| Chat | Confirmar os tipos e nomes definitivos dos campos de requisição e resposta em `chat_model.py`. |
+| Sessões | Definir os detalhes de criação, recuperação e encerramento das sessões no `chat_service`. |
+| Erros | Alinhar as exceções específicas e os formatos de erro retornados pela API. |
+| Logging | Confirmar os eventos e níveis de log necessários para cada componente. |
 
-### 8.2. Formato padronizado
-
-Proposta de estrutura:
-
-```json
-{
-    "error": {
-        "code": "RESOURCE_NOT_FOUND",
-        "message": "O produtor solicitado não foi encontrado."
-    }
-}
-```
-
-Regras:
-
-- Cada erro deve possuir um código identificável.
-- A mensagem deve ser compreensível.
-- Detalhes internos devem ser registrados nos logs, não expostos ao usuário.
-- A API deve converter exceções internas em respostas HTTP apropriadas.
-- Erros recuperáveis devem ser tratados quando possível.
+As decisões devem ser documentadas e incorporadas aos contratos quando forem confirmadas pelos responsáveis.
 
 ---
 
-## 9. Logging e rastreabilidade
+## 11. Considerações finais
 
-A aplicação deve manter registros que permitam acompanhar a execução das operações e identificar problemas.
+Este documento deve funcionar como referência compartilhada para o desenvolvimento e a integração dos módulos do projeto.
 
-Eventos recomendados:
+A implementação dos componentes deve respeitar as responsabilidades estabelecidas na arquitetura, priorizando baixo acoplamento, separação de responsabilidades, rastreabilidade das informações e proteção dos dados.
 
-- Recebimento de requisições HTTP.
-- Início e término do processamento de mensagens.
-- Encaminhamento para agentes especializados.
-- Execução de ferramentas.
-- Consultas aos repositórios.
-- Consultas ao RAG.
-- Erros de execução.
+Sempre que uma alteração exigir mudanças na comunicação entre dois ou mais componentes, os responsáveis devem alinhar o novo contrato antes de concluir a integração.
 
-Quando disponível, os registros devem conter:
-
-| Campo | Finalidade |
-|---|---|
-| `timestamp` | Data e horário do evento. |
-| `level` | Nível do registro. |
-| `component` | Componente responsável. |
-| `session_id` | Sessão relacionada. |
-| `operation` | Operação executada. |
-| `message` | Descrição do evento. |
-
-Dados pessoais e informações sensíveis dos produtores não devem ser registrados desnecessariamente.
-
----
-
-## 10. Regras gerais de integração
-
-Todos os integrantes devem observar os seguintes princípios:
-
-1. **Responsabilidade única:** cada camada deve executar somente as atividades de sua competência.
-2. **Baixo acoplamento:** componentes devem depender de interfaces bem definidas.
-3. **Tipagem:** utilizar tipagem explícita e modelos Pydantic nas fronteiras de dados.
-4. **Validação:** validar entradas antes de executar operações.
-5. **Determinismo:** regras de negócio devem ser implementadas em código, não delegadas à interpretação do LLM.
-6. **Rastreabilidade:** respostas baseadas em documentos devem apresentar suas fontes.
-7. **Segurança:** não expor credenciais, dados pessoais desnecessários ou detalhes internos.
-8. **Tratamento de erros:** falhas devem ser comunicadas de maneira padronizada.
-9. **Testabilidade:** componentes devem permitir testes independentes.
-10. **Documentação:** alterações nos contratos devem ser refletidas neste documento e em `docs/ESTRUTURA.md`, quando afetarem a arquitetura.
-
----
-
-## 11. Decisões pendentes
-
-Os seguintes pontos precisam ser discutidos e validados pelos responsáveis antes da implementação definitiva:
-
-| Decisão | Responsáveis | Situação |
-|---|---|---|
-| Formato definitivo de entrada e saída dos agentes | Arquitetura e David | Pendente |
-| Definição das interfaces das ferramentas | Arquitetura e David | Pendente |
-| Interfaces definitivas dos serviços e repositórios | Arquitetura e Arthur | Pendente |
-| Metadados definitivos do RAG | Arquitetura e Rawan | Pendente |
-| Contrato definitivo do endpoint de chat | Arquitetura e Raquel | Pendente |
-| Estratégia de gerenciamento de sessões | Arquitetura e Raquel | Pendente |
-| Formato definitivo de erros HTTP | Arquitetura e equipe | Pendente |
-| Política de apresentação de fontes | Arquitetura, Rawan e Raquel | Pendente |
-
-As decisões devem ser registradas e atualizadas conforme a implementação evoluir.
-
----
-
-## 12. Histórico de alterações
-
-| Versão | Descrição |
-|---|---|
-| 1.0 | Criação da proposta inicial de contratos arquiteturais. |
-
-**Última atualização:** novembro de 2026.
-
-**Documento relacionado:** `docs/ESTRUTURA.md`, `docs/DADOS.md` e `data/README.md`.
+A arquitetura e os contratos devem evoluir de forma coordenada, mantendo `docs/ESTRUTURA.md` como referência para a organização dos componentes e este documento como referência para sua comunicação.
