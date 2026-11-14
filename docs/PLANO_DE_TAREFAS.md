@@ -297,7 +297,7 @@ A vantagem é que os serviços e repositórios solicitam uma chave lógica, como
 
 A distribuição considera os cargos e as áreas definidos pela equipe. Como Membro 1 e Membro 3 compartilham o papel de liderança técnica/arquitetura, a recomendação é dividir a liderança: Murilao coordena a arquitetura global e as integrações; David atua como co-arquiteto e assume a implementação técnica do domínio de triagem de pedidos e agentes.
 
-## 6.1 Membro 1 — Murilao
+## 6.1 Membro 1 — Murilo
 **Cargo:** Líder Técnico / Arquiteto de Solução  
 **Área:** Arquitetura
 
