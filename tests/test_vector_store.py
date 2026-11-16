@@ -95,7 +95,9 @@ def test_search(vector_store, sample_chunks):
 
     assert len(results) == 2
 
-    for chunk, distance in results:
+    for chunk_id, chunk, distance in results:
+        assert isinstance(chunk_id, str)
+        assert len(chunk_id) == 64
         assert isinstance(chunk, DocumentChunk)
         assert isinstance(distance, float)
         assert distance >= 0
@@ -165,8 +167,8 @@ def test_replace_document(vector_store, sample_chunks):
     assert len(results) == 2
     assert all(
         chunk.text in [item.text for item in new_chunks]
-        for chunk, _ in results
-    )
+        for _, chunk, _ in results
+)
 
 def test_replace_document_preserva_antigos_se_embedding_falhar(
     vector_store,

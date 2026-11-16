@@ -293,7 +293,7 @@ class VectorStore:
         self,
         query: str,
         n_results: int = 5,
-    ) -> list[tuple[DocumentChunk, float]]:
+    ) -> list[tuple[str, DocumentChunk, float]]:
         """Busca os chunks mais relevantes para uma consulta."""
 
         if not query.strip():
@@ -327,8 +327,10 @@ class VectorStore:
         documents = results["documents"][0]
         metadatas = results["metadatas"][0]
         distances = results["distances"][0]
+        ids = results["ids"][0]
 
-        for text, metadata, distance in zip(
+        for chunk_id, text, metadata, distance in zip(
+            ids,
             documents,
             metadatas,
             distances,
@@ -338,7 +340,7 @@ class VectorStore:
                 metadata=metadata,
             )
 
-            chunks.append((chunk, distance))
+            chunks.append((chunk_id, chunk, distance))
 
         return chunks
 

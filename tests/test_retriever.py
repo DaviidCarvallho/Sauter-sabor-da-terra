@@ -10,6 +10,7 @@ from rag.retriever import RetrievedChunk, Retriever
 def sample_chunks():
     return [
         (
+            "chunk-id-001",
             DocumentChunk(
                 text="A cooperativa produz queijo artesanal.",
                 metadata={
@@ -22,6 +23,7 @@ def sample_chunks():
             0.15,
         ),
         (
+            "chunk-id-002",
             DocumentChunk(
                 text="O leite é utilizado na produção de queijos.",
                 metadata={
@@ -53,6 +55,7 @@ def test_retrieve(retriever, vector_store):
 
     assert len(results) == 2
     assert all(isinstance(item, RetrievedChunk) for item in results)
+
     vector_store.search.assert_called_once_with(
         query="Produção de queijo",
         n_results=5,
@@ -76,6 +79,7 @@ def test_retrieve_com_threshold(retriever):
 
     assert len(results) == 1
     assert results[0].distance == 0.15
+    assert results[0].id == "chunk-id-001"
 
 
 def test_retrieve_sem_threshold(retriever):
@@ -113,9 +117,31 @@ def test_retrieve_sem_resultados(retriever, vector_store):
     assert results == []
 
 
-def test_retrieve_preserva_metadados(retriever, sample_chunks):
+def test_retrieve_preserva_metadados(retriever):
     results = retriever.retrieve("Produção de queijo")
 
-    assert results[0].chunk.metadata == sample_chunks[0][0].metadata
-    assert results[0].chunk.metadata["source"] == "queijo.txt"
-    assert results[0].chunk.metadata["page"] == 1
+    metadata = results[0].metadata
+
+    assert metadata["source"] == "queijo.txt"
+    assert metadata["page"] == 1
+    assert metadata["document_type"] == "ficha_tecnica"
+    assert metadata["chunk_index"] == 0
+    assert metadata["document_name"] == "queijo.txt"
+
+
+def test_retrieve_retorna_estrutura_de_evidencia(retriever):
+    results = retriever.retrieve("Produção de queijo")
+
+    evidence = results[0]
+
+    assert evidence.id == "chunk-id-001"
+    assert evidence.content == "A cooperativa produz queijo artesanal."
+    assert evidence.distance == 0.15
+    assert evidence.score == pytest.approx(0.85)
+
+
+def test_retrieve_score_e_calculado_a_partir_da_distancia(retriever):
+    results = retriever.retrieve("Produção de queijo")
+
+    for evidence in results:
+        assert evidence.score == pytest.approx(1 - evidence.distance)

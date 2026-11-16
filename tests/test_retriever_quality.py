@@ -58,7 +58,7 @@ def test_retriever_finds_expected_source(
     results = retriever.retrieve(query=query, top_k=5)
 
     sources = [
-        result.chunk.metadata.get("source")
+        result.metadata.get("source")
         for result in results
     ]
 
@@ -86,7 +86,7 @@ def test_retriever_preserves_relevant_result_with_threshold(retriever):
     )
 
     sources = [
-        result.chunk.metadata.get("source")
+        result.metadata.get("source")
         for result in results
     ]
 
