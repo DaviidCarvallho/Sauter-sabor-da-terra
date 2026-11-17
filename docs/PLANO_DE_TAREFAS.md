@@ -2,7 +2,7 @@
 ## Arquitetura do Projeto e Plano de Tarefas da Equipe
 
 **Projeto:** Assistente Inteligente para Gestão de Cooperativa Agrícola  
-**Equipe:** Murilao, Rawan, David, Arthur e Raquel
+**Equipe:** Murilo, Rawan, David, Arthur e Raquel
 
 ---
 
@@ -295,7 +295,7 @@ A vantagem é que os serviços e repositórios solicitam uma chave lógica, como
 
 # 6. Plano de trabalho por integrante
 
-A distribuição considera os cargos e as áreas definidos pela equipe. Como Membro 1 e Membro 3 compartilham o papel de liderança técnica/arquitetura, a recomendação é dividir a liderança: Murilao coordena a arquitetura global e as integrações; David atua como co-arquiteto e assume a implementação técnica do domínio de triagem de pedidos e agentes.
+A distribuição considera os cargos e as áreas definidos pela equipe. Como Membro 1 e Membro 3 compartilham o papel de liderança técnica/arquitetura, a recomendação é dividir a liderança: Murilo coordena a arquitetura global e as integrações; David atua como co-arquiteto e assume a implementação técnica do domínio de triagem de pedidos e agentes.
 
 ## 6.1 Membro 1 — Murilo
 **Cargo:** Líder Técnico / Arquiteto de Solução  
@@ -321,16 +321,16 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 
 ### Responsabilidades e tarefas
 
-- [ ] Receber e conferir os documentos reais de certificações, contratos e fichas técnicas; registrar arquivos ausentes ou ilegíveis.
-- [ ] Implementar `repositories/document_repository.py` para listar documentos e disponibilizar seus bytes via Storage.
-- [ ] Implementar `rag/document_loader.py` para extrair texto de PDF/DOCX e preservar nome do arquivo, tipo de documento e página.
-- [ ] Implementar `rag/chunker.py` com tamanho e sobreposição configuráveis; testar a divisão nos documentos reais.
-- [ ] Implementar `rag/vector_store.py` para persistir e consultar embeddings no ChromaDB.
-- [ ] Escolher e documentar o modelo de embeddings compatível com o ambiente Gemini/Google, após verificar disponibilidade e requisitos.
-- [ ] Implementar `rag/ingestion.py` como processo separado e repetível de indexação; evitar reindexar a cada pergunta.
-- [ ] Implementar `rag/retriever.py` para busca top-k, score e filtros por metadados quando úteis.
+- [x] Receber e conferir os documentos reais de certificações, contratos e fichas técnicas; registrar arquivos ausentes ou ilegíveis.
+- [x] Implementar `repositories/document_repository.py` para listar documentos e disponibilizar seus bytes via Storage.
+- [x] Implementar `rag/document_loader.py` para extrair texto de PDF/DOCX e preservar nome do arquivo, tipo de documento e página.
+- [x] Implementar `rag/chunker.py` com tamanho e sobreposição configuráveis; testar a divisão nos documentos reais.
+- [x] Implementar `rag/vector_store.py` para persistir e consultar embeddings no ChromaDB.
+- [x] Escolher e documentar o modelo de embeddings compatível com o ambiente Gemini/Google, após verificar disponibilidade e requisitos.
+- [x] Implementar `rag/ingestion.py` como processo separado e repetível de indexação; evitar reindexar a cada pergunta.
+- [x] Implementar `rag/retriever.py` para busca top-k, score e filtros por metadados quando úteis.
 - [ ] Trabalhar com `documento_service.py` e `documentos_agent.py` para devolver evidências e fontes em formato consistente.
-- [ ] Criar testes: documento encontrado, fonte/página preservadas, pergunta sem evidência e ausência de alucinação.
+- [x] Criar testes: documento encontrado, fonte/página preservadas, pergunta sem evidência e ausência de alucinação.
 
 **Entregas principais:** documentos carregados; índice ChromaDB criado; consulta semântica funcional; trechos recuperados com fonte/página; testes do RAG.
 
@@ -340,7 +340,7 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 
 ### Responsabilidades e tarefas
 
-- [ ] Definir, com Murilao, o comportamento do `root_agent` e a estratégia de delegação para os três especialistas.
+- [ ] Definir, com Murilo, o comportamento do `root_agent` e a estratégia de delegação para os três especialistas.
 - [ ] Implementar `agents/agent.py` com o agente principal e o registro dos especialistas conforme a versão instalada do Google ADK.
 - [ ] Implementar `agents/prompts.py` com instruções claras para o orquestrador e para o Agente de Pedidos.
 - [ ] Implementar `agents/tools.py` com funções tipadas que chamem serviços, sem leitura direta de arquivos.
@@ -380,7 +380,7 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 ### Responsabilidades e tarefas
 
 - [ ] Revisar a estrutura atual de `static/index.html`, `css/style.css` e `js/app.js`.
-- [ ] Definir com Murilao e David o contrato de `POST /api/chat`: campos enviados, resposta, identificador de sessão e formato de erros.
+- [ ] Definir com Murilo e David o contrato de `POST /api/chat`: campos enviados, resposta, identificador de sessão e formato de erros.
 - [ ] Habilitar o campo de mensagem e implementar envio assíncrono com `fetch` para a API.
 - [ ] Exibir mensagens do usuário e do assistente, estado de carregamento e mensagens de erro.
 - [ ] Preservar o `session_id` durante a conversa para que o backend possa manter o contexto.
@@ -398,17 +398,17 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 
 | Atividade / componente | Responsável principal | Apoio / dependência |
 |---|---|---|
-| Arquitetura, padrões e integração | Murilao | David; todos os integrantes |
-| Orquestrador e contratos dos agentes | David | Murilao |
-| Agente de Pedidos e triagem | David | Arthur (dados/repositórios); Murilao (revisão) |
-| Documentos, ingestão e RAG | Rawan | Murilao (contratos); David (agente); Arthur (Storage/repositórios) |
+| Arquitetura, padrões e integração | Murilo | David; todos os integrantes |
+| Orquestrador e contratos dos agentes | David | Murilo |
+| Agente de Pedidos e triagem | David | Arthur (dados/repositórios); Murilo (revisão) |
+| Documentos, ingestão e RAG | Rawan | Murilo (contratos); David (agente); Arthur (Storage/repositórios) |
 | Modelos e repositórios de dados | Arthur | David (campos usados na triagem); Rawan (documentos) |
-| Produtores, financeiro e relatórios | Arthur | David (agente/ferramentas); Murilao (revisão) |
-| Frontend e integração do chat | Raquel | David (payload/response); Murilao (contrato API) |
+| Produtores, financeiro e relatórios | Arthur | David (agente/ferramentas); Murilo (revisão) |
+| Frontend e integração do chat | Raquel | David (payload/response); Murilo (contrato API) |
 | Testes de regras de pedidos | David | Arthur |
-| Testes de RAG e citações | Rawan | Raquel (interface); Murilao (revisão) |
-| Testes de API e interface | Raquel | Murilao e responsáveis pelos módulos |
-| Revisão final e apresentação técnica | Murilao | Todos |
+| Testes de RAG e citações | Rawan | Raquel (interface); Murilo (revisão) |
+| Testes de API e interface | Raquel | Murilo e responsáveis pelos módulos |
+| Revisão final e apresentação técnica | Murilo | Todos |
 
 ---
 
@@ -418,14 +418,14 @@ As tarefas têm dependências. A equipe pode trabalhar em paralelo, mas deve com
 
 | Ordem | Etapa | Responsáveis | Critério para avançar |
 |---|---|---|---|
-| 1 | Conferir a estrutura do projeto, remover artefatos locais do compartilhamento e obter os dados reais. | Murilao + todos | Estrutura limpa e dados disponibilizados ou pendências formalizadas. |
-| 2 | Definir contratos de modelos, serviços e API. | Murilao + David + Arthur + Rawan + Raquel | Campos e formatos documentados; payload do chat acordado. |
+| 1 | Conferir a estrutura do projeto, remover artefatos locais do compartilhamento e obter os dados reais. | Murilo + todos | Estrutura limpa e dados disponibilizados ou pendências formalizadas. |
+| 2 | Definir contratos de modelos, serviços e API. | Murilo + David + Arthur + Rawan + Raquel | Campos e formatos documentados; payload do chat acordado. |
 | 3 | Implementar modelos e repositórios de dados. | Arthur | CSV/JSON lidos corretamente e testes passando. |
 | 4 | Implementar triagem determinística e Agente de Pedidos. | David + Arthur | Casos de pedido testados e alertas reproduzíveis. |
 | 5 | Implementar ingestão, ChromaDB, recuperação e Agente de Documentos. | Rawan | Perguntas respondidas com fontes; abstenção quando não há evidência. |
 | 6 | Implementar consultas de produtores, relatórios e agente. | Arthur + David | Relatórios conferidos com os dados de origem. |
 | 7 | Conectar chat e apresentar resultados na interface. | Raquel + David | Fluxo completo funciona no navegador. |
-| 8 | Testes integrados, correções e ensaio de demonstração. | Raquel + Murilao + todos | Cenários principais executados sem falhas críticas. |
+| 8 | Testes integrados, correções e ensaio de demonstração. | Raquel + Murilo + todos | Cenários principais executados sem falhas críticas. |
 
 ---
 
@@ -494,7 +494,7 @@ Arquivo criado com docstring, função vazia ou teste ignorado não representa f
 
 # 13. Resumo executivo
 
-- **Murilao:** coordena a arquitetura, os padrões técnicos, os contratos entre módulos e a integração geral.
+- **Murilo:** coordena a arquitetura, os padrões técnicos, os contratos entre módulos e a integração geral.
 - **Rawan:** constrói a base documental, o pipeline de ingestão e o RAG.
 - **David:** implementa o agente principal, a inteligência de triagem e as validações de pedidos, em parceria com Arthur.
 - **Arthur:** implementa o acesso aos dados estruturados, as consultas de produtores, o financeiro e os relatórios.
