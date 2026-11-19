@@ -4,7 +4,7 @@ Função:
     Funções Python tipadas e com docstring que o ADK expõe ao modelo.
 
 Responsabilidades:
-    - Organizadas por especialista (hoje: pedidos e documentos; produtores segue o mesmo padrão)
+    - Organizadas por especialista (pedidos, documentos e produtores)
     - Cada ferramenta é fina: valida a entrada, chama um serviço e devolve um dicionário simples
       com campo "status" ("sucesso" ou "erro")
 
@@ -13,8 +13,10 @@ Não deve:
     - Conter regra de negócio (safra, capacidade, preço e urgência vivem em services/)
 
 Relações:
-    Usa:        services.triagem_service, services.pedido_service, services.documento_service
-    Usado por:  agents.subagents.pedidos_agent, agents.subagents.documentos_agent
+    Usa:        services.triagem_service, services.pedido_service, services.documento_service,
+                services.produtor_service, services.relatorio_service
+    Usado por:  agents.subagents.pedidos_agent, agents.subagents.documentos_agent,
+                agents.subagents.produtores_agent
 
 Observações:
     A docstring de cada ferramenta é o que o modelo lê para decidir quando usá-la.
@@ -39,6 +41,8 @@ from google.adk.tools.tool_context import ToolContext
 
 from services.documento_service import TOP_K_PADRAO, DocumentoService
 from services.pedido_service import NOMES_DIAS_PT, PedidoService
+from services.produtor_service import ProdutorService
+from services.relatorio_service import RelatorioService
 from services.triagem_service import TriagemService, resolver_prazo
 from utils.logger import get_logger
 
@@ -297,3 +301,161 @@ def consultar_documentos(
 
 
 FERRAMENTAS_DOCUMENTOS = [obter_data_atual, consultar_documentos]
+
+
+# ---------- ferramentas do Agente de Produtores ----------
+
+@lru_cache
+def get_produtor_service() -> ProdutorService:
+    return ProdutorService()
+
+
+@lru_cache
+def get_relatorio_service() -> RelatorioService:
+    return RelatorioService()
+
+
+def _data_opcional(valor: str | None) -> date | None:
+    return date.fromisoformat(valor.strip()) if valor and valor.strip() else None
+
+
+def _resolver_produtor(identificador: str) -> tuple[str | None, dict[str, Any] | None]:
+    """(id, None) se achou; (None, erro) caso contrário. Aceita ID (P001) ou nome."""
+    if not (identificador or "").strip():
+        return None, _erro("Informe 'produtor' (ID como P001 ou o nome do produtor).")
+    produtor = get_produtor_service().buscar_produtor(identificador)
+    if produtor is None:
+        return None, _erro(f"Produtor '{identificador.strip()}' não encontrado.")
+    return produtor.id, None
+
+
+def _transacao_enxuta(t: Any) -> dict[str, Any]:
+    """Só o necessário para resumir pendências; sem forma de pagamento nem observações."""
+    return {
+        "id_transacao": t.id_transacao,
+        "data": t.data.isoformat(),
+        "comprador": t.comprador,
+        "produto": t.produto,
+        "quantidade": str(t.quantidade),
+        "unidade": t.unidade,
+        "valor_total": str(t.valor_total),
+        "status_pagamento": t.status_pagamento,
+        "data_vencimento": t.data_vencimento.isoformat(),
+    }
+
+
+def consultar_produtor(produtor: str = "") -> dict[str, Any]:
+    """Consulta o cadastro público de um produtor (município, produtos, certificação orgânica, situação).
+
+    Use para identificar um produtor pelo ID (ex.: P001) ou pelo nome, antes de gerar resumos.
+    Não devolve CPF, telefone nem dados bancários.
+
+    Args:
+        produtor: ID (P001) ou nome do produtor.
+
+    Returns:
+        Dicionário com "status" e "produtor" (id, nome, município, produtos, certificação, situação).
+    """
+    try:
+        produtor_id, erro = _resolver_produtor(produtor)
+        if erro:
+            return erro
+        p = get_produtor_service().buscar_produtor(produtor_id)
+    except OSError:
+        logger.error("consultar_produtor: falha ao ler os dados")
+        return _erro("Não foi possível consultar os produtores agora. Tente novamente.")
+    return {
+        "status": "sucesso",
+        "produtor": {
+            "id": p.id, "nome": p.nome, "municipio": p.municipio, "produtos": p.produtos,
+            "certificacao_organica": p.certificacao_organica,
+            "validade_certificacao": p.validade_certificacao.isoformat() if p.validade_certificacao else None,
+            "situacao": p.status,
+        },
+    }
+
+
+def resumo_produtor(
+    produtor: str = "",
+    data_inicio: str = "",
+    data_fim: str = "",
+    data_referencia: str = "",
+) -> dict[str, Any]:
+    """Resumo calculado de um produtor: vendas, pagos, pendências, atrasos, produtos e pedidos.
+
+    Use para "quanto o produtor vendeu", "o que está pendente" e relatórios. Os números são
+    calculados em código; apresente-os exatamente como vierem e informe a data de referência.
+
+    Args:
+        produtor: ID (P001) ou nome do produtor.
+        data_inicio: Início do período (AAAA-MM-DD); vazio considera todo o histórico.
+        data_fim: Fim do período (AAAA-MM-DD); vazio considera todo o histórico.
+        data_referencia: Data de "hoje" (AAAA-MM-DD) para atrasos e vencimentos; vazio usa a atual.
+
+    Returns:
+        Dicionário com "status" e "resumo" (totais, transações em atraso e a vencer, produtos
+        vendidos, certificação, alertas, pedidos relacionados) ou "mensagem" em caso de erro.
+    """
+    try:
+        produtor_id, erro = _resolver_produtor(produtor)
+        if erro:
+            return erro
+        r = get_relatorio_service().gerar_relatorio_produtor(
+            produtor_id,
+            data_inicio=_data_opcional(data_inicio),
+            data_fim=_data_opcional(data_fim),
+            data_referencia=_data_opcional(data_referencia),
+        )
+    except ValueError as exc:
+        return _erro(f"Entrada inválida: {exc}")
+    except OSError:
+        logger.error("resumo_produtor: falha ao ler os dados")
+        return _erro("Não foi possível consultar os dados agora. Tente novamente.")
+
+    resumo = r.model_dump(mode="json", exclude={"transacoes_em_atraso", "transacoes_a_vencer", "pedidos_relacionados"})
+    resumo["transacoes_em_atraso"] = [_transacao_enxuta(t) for t in r.transacoes_em_atraso]
+    resumo["transacoes_a_vencer"] = [_transacao_enxuta(t) for t in r.transacoes_a_vencer]
+    # Só identificação dos pedidos: o texto original pode conter CPF, conta bancária etc.
+    resumo["pedidos_relacionados"] = [
+        {"id": p.id, "comprador": p.comprador, "situacao": p.status,
+         "data_recebimento": p.data_recebimento.date().isoformat()}
+        for p in r.pedidos_relacionados
+    ]
+    return {"status": "sucesso", "resumo": resumo}
+
+
+def dados_notificacao_produtor(produtor: str = "", data_referencia: str = "") -> dict[str, Any]:
+    """Reúne os números verificados para você REDIGIR uma notificação ao produtor (não envia nada).
+
+    Use quando pedirem um aviso, lembrete ou mensagem para um produtor. Escreva o texto usando
+    apenas estes dados; a mensagem fica como rascunho para a equipe revisar e enviar.
+
+    Args:
+        produtor: ID (P001) ou nome do produtor.
+        data_referencia: Data de "hoje" (AAAA-MM-DD); vazio usa a atual.
+
+    Returns:
+        Dicionário com "status" e "dados" (totais, quantidade de pendências, situação da
+        certificação e itens pendentes) ou "mensagem" em caso de erro.
+    """
+    try:
+        produtor_id, erro = _resolver_produtor(produtor)
+        if erro:
+            return erro
+        d = get_relatorio_service().preparar_dados_notificacao(
+            produtor_id, data_referencia=_data_opcional(data_referencia)
+        )
+    except ValueError as exc:
+        return _erro(f"Entrada inválida: {exc}")
+    except OSError:
+        logger.error("dados_notificacao_produtor: falha ao ler os dados")
+        return _erro("Não foi possível consultar os dados agora. Tente novamente.")
+
+    dados = d.model_dump(mode="json", exclude={"itens_pendentes"})
+    dados["itens_pendentes"] = [_transacao_enxuta(t) for t in d.itens_pendentes]
+    return {"status": "sucesso", "dados": dados}
+
+
+FERRAMENTAS_PRODUTORES = [
+    obter_data_atual, consultar_produtor, resumo_produtor, dados_notificacao_produtor,
+]
