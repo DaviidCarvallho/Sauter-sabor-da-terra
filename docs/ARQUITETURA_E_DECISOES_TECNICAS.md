@@ -151,10 +151,10 @@ O frontend é servido pelo próprio FastAPI (`main.py` monta `static/` na mesma 
 | | Campos |
 |---|---|
 | Requisição | `message` (1 a 4000 caracteres), `session_id` (opcional), `user_id` (alias aceito: `user`) |
-| Resposta | `answer`, `session_id`, `agents_used`, `sources` (`source`, `page`), `status` |
+| Resposta | `answer`, `session_id`, `agents_used`, `sources` (`source`, `page`), `alerts` (`tipo`, `severidade`, `mensagem`, `produto`), `status` |
 | Erros | `{"detail": "..."}` com **422** (corpo inválido), **429** (limite de requisições da IA), **503** (IA não configurada ou chave recusada), **502** (falha do assistente) |
 
-O navegador guarda o `session_id` e um `user_id` anônimo; a conversa sobrevive a recarregar a página. O frontend **não recebe alertas como campo estruturado**: os alertas da triagem vêm dentro do texto de `answer` (a tela já sabe exibir `alerts` quando o backend passar a enviá-los). Os nomes dos campos foram adotados na implementação e **aguardam confirmação do Murilo** (`CONTRATOS_ARQUITETURAIS.md`, seção 10.1). Roteiro de verificação em [`CONEXAO_BACKEND.md`](CONEXAO_BACKEND.md).
+O navegador guarda o `session_id` e um `user_id` anônimo; a conversa sobrevive a recarregar a página. Os alertas da triagem chegam também como campo estruturado `alerts` (gravados pela ferramenta `triar_pedido` no estado da sessão, como as fontes) e a tela os exibe em destaque, além do texto de `answer`. Os nomes dos campos foram adotados na implementação e **aguardam confirmação do Murilo** (`CONTRATOS_ARQUITETURAIS.md`, seção 10.1). Roteiro de verificação em [`CONEXAO_BACKEND.md`](CONEXAO_BACKEND.md).
 
 ---
 
@@ -201,7 +201,7 @@ sequenceDiagram
     R->>G: combinar a resposta final
     G-->>R: texto final
     R-->>S: evento final + agentes acionados
-    S-->>C: ChatResponse(answer, agents_used, sources)
+    S-->>C: ChatResponse(answer, agents_used, sources, alerts)
     C-->>F: 200 JSON
     F-->>U: resposta, alertas e agentes acionados
 ```
@@ -258,7 +258,7 @@ A triagem separa **interpretação** (do modelo) de **verificação** (do códig
 2. **O prazo vira data por código** (`resolver_prazo`), nunca por cálculo do modelo. Data explícita vence qualquer pista (`sexta (01/nov)` → 01/11); `hoje`, `amanhã` e dias da semana viram datas; **"semana que vem", "o quanto antes" e o mesmo dia da semana de hoje são ambíguos** e geram pergunta; datas ISO (`AAAA-MM-DD`) também são aceitas.
 3. **O `pedido_service` valida cada item**: existência no catálogo (com normalização de nomes), nível de safra no mês de entrega (`fora_de_safra`, `baixa_disponibilidade`), restrição sanitária (sem SIE) e exclusividade de produtor, produtores ativos e certificação orgânica vigente, preço convencional/orgânico com desconto de atacado, e **capacidade** pela regra híbrida (limite explícito nas observações ou maior lote histórico). Sem nenhuma das duas referências, o sistema **não afirma capacidade** (`capacidade_nao_comprovada`).
 4. **O `triagem_service` completa**: urgência, tipo validado e informações ausentes (`comprador`, `prazo`, `quantidade:<produto>`, `unidade:<produto>`, `prazo_ambiguo`, `prazo_no_passado`, `conversao_unidade:<produto>`, `capacidade_nao_comprovada:<produto>`).
-5. **Unidade diferente da tabela de preços** (ex.: "caixas" × kg): não há fator de conversão nos dados, então o item fica **sem valor estimado** em vez de tratar "10 caixas" como "10 kg".
+5. **Unidade diferente da tabela de preços** (ex.: "caixas" × kg): não há fator de conversão nos dados, então o item fica **sem valor estimado** em vez de tratar "10 caixas" como "10 kg". A única conversão aplicada é **dúzia ↔ unidade** (1 dúzia = 12 unidades), com alerta informativo `conversao_unidade_aplicada`; sufixos de frequência ("kg/mês") são ignorados na unidade.
 6. **O agente apresenta** o resultado: resumo, itens, produtores elegíveis, alertas e pendências. Ele **nunca confirma, reserva nem aloca** um pedido.
 
 Classificação (proposta implementada, **a validar com a equipe**):
@@ -293,7 +293,7 @@ flowchart LR
 ```
 
 - **Ingestão** é um processo separado e repetível (`python -m rag.ingestion`), não roda a cada pergunta. É **idempotente**: substitui os trechos de cada documento (`replace_document`) e, se um documento falhar, continua com os demais e registra o erro no relatório final. Os chunks são medidos em **caracteres** (1000, com sobreposição de 150) e o corte prefere uma quebra de linha ou um espaço. O índice (`.vectorstore/`) é um artefato derivado, **não versionado**: cada máquina precisa gerá-lo, e isso usa a API de embeddings.
-- **Consulta**: o `documento_service` pede ao `retriever` os 5 trechos mais próximos (máximo 8) e descarta os com distância acima de **0,30** (o mesmo valor usado nos testes de qualidade do retriever). Sem nenhum trecho, o resultado é **evidência insuficiente** e o agente diz que não encontrou.
+- **Consulta**: o `documento_service` pede ao `retriever` os 5 trechos mais próximos (máximo 8) e descarta os com distância acima de **0,30** (o mesmo valor usado nos testes de qualidade do retriever). Sem nenhum trecho, o resultado é **evidência insuficiente** e o agente diz que não encontrou. Medido em 19/11/2026 com o índice real (20 documentos, 52 trechos): o melhor trecho de 12 perguntas com resposta ficou entre 0,20 e 0,27 e o de 6 perguntas sem resposta entre 0,36 e 0,42, então 0,30 separa os dois grupos nessa amostra pequena.
 - **Metadados** preservados: `source` (documento), `document_type`, `page` e `chunk_index`. O loader grava `page = 1` para `.txt`, mas arquivo de texto não tem páginas e o contrato manda não inventar número; por isso o `documento_service` **omite a página de `.txt`** e preserva a de PDF/DOCX.
 - **Fontes estruturadas**: a ferramenta grava as fontes no estado da sessão (o ADK encaminha o estado do especialista à sessão do orquestrador) e o `chat_service` as devolve em `sources`, zeradas a cada turno.
 - **Segurança**: o conteúdo dos trechos é tratado como **dado**; instruções vindas de documentos não são seguidas.
@@ -380,7 +380,7 @@ pytest
 node qa/test_logica.js
 ```
 
-Testes que dependem de recursos externos ficam ignorados com motivo explícito: qualidade do retriever (exige índice real e `RUN_RETRIEVER_QUALITY=1`), 2 testes de chat que chamam o modelo (exigem chave) e a rastreabilidade de lotes (não implementada). A validação com o **Gemini real** foi feita manualmente em 5 cenários (`AGENTES_E_TRIAGEM.md`, seção 9), não de forma automatizada.
+Testes que dependem de recursos externos ficam ignorados com motivo explícito: qualidade do retriever (exige índice real e `RUN_RETRIEVER_QUALITY=1`), 2 testes de chat que chamam o modelo (exigem chave). A rastreabilidade de lotes é testada no nível de repositório e de serviço (dossiê do produtor), mas não há consulta de lotes pelo Agente de Documentos. A validação com o **Gemini real** foi feita manualmente (os 15 pedidos, 9 perguntas de documentos/produtores e os 5 cenários anteriores; `AGENTES_E_TRIAGEM.md`, seção 9), não de forma automatizada. `evals/` guarda conjuntos de avaliação do ADK; `tests/test_evalsets.py` reexecuta a parte determinística da triagem sem LLM.
 
 ---
 
@@ -392,10 +392,10 @@ Testes que dependem de recursos externos ficam ignorados com motivo explícito: 
 | Sem autenticação | Autenticação e autorização por perfil |
 | Pedidos triados e notificações não são gravados nem enviados | Estratégia de persistência e canal de envio, com aprovação humana |
 | Rastreabilidade de lotes sem agente | Serviço e ferramenta sobre `lotes.csv` e documentos |
-| Índice vetorial não versionado e não calibrado (limiar 0,30, chunks 1000/150) | Calibrar com perguntas reais; automatizar a ingestão |
+| Índice vetorial não versionado; limiar 0,30 conferido em amostra pequena (18 perguntas) e chunks 1000/150 não comparados com outros tamanhos | Ampliar a amostra de perguntas; automatizar a ingestão |
 | Free Tier: limite medido de ~15 chamadas por minuto, e cada mensagem usa de 4 a 6 | Plano pago ou fila/espaçamento de mensagens |
-| Qualidade da interpretação do Gemini validada em poucos cenários | Avaliação com os 15 pedidos reais e conjuntos de avaliação do ADK |
-| Alertas da triagem só no texto | Enviar `alerts` estruturados à interface |
+| Interpretação do Gemini validada manualmente (uma execução por caso, sem medição automática de qualidade) | Rodar `adk eval` com os conjuntos de `evals/` e ajustar o critério |
+| Erros transitórios do Gemini (503 "alta demanda") viram 502 genérico | Repetição automática com espera |
 | Controllers REST de pedidos, documentos e produtores são esqueletos | Ativar só se a interface precisar |
 | `GCSStorage` é esqueleto | Implementar na migração para a nuvem |
 
@@ -481,7 +481,7 @@ Cada decisão indica a **origem**: *documentada* (registrada no repositório, co
 ### D14. Fontes devolvidas pelo estado da sessão
 - **Problema:** a resposta da API precisa de `sources` estruturado, mas o especialista devolve só texto ao orquestrador.
 - **Por quê (*análise*):** o `AgentTool` do ADK encaminha o estado do especialista à sessão do orquestrador; a ferramenta grava as fontes e o `chat_service` as lê, zerando-as a cada turno.
-- **Limitações:** depende de um comportamento do ADK; o mesmo mecanismo poderia enviar alertas estruturados (não feito).
+- **Limitações:** depende de um comportamento do ADK; o mesmo mecanismo envia os alertas estruturados da triagem (`alertas_pedido` → `alerts`).
 
 ### D15. Testes de agentes com LLM simulado
 - **Problema:** testar delegação e uso de ferramentas sem custo nem variação.
@@ -502,3 +502,15 @@ Cada decisão indica a **origem**: *documentada* (registrada no repositório, co
 - **Problema:** o sistema não autentica; sem salvaguarda, qualquer pessoa poderia consultar valores de um produtor.
 - **Por quê (*análise*):** é a mitigação disponível sem autenticação.
 - **Limitações:** **não é controle de acesso**; depende do modelo seguir a instrução. A autenticação continua pendente.
+
+### D19. Alertas estruturados pelo estado da sessão
+- **Problema:** a interface precisa destacar alertas de safra, capacidade e dados ausentes, mas o texto do modelo pode omiti-los ou reescrevê-los.
+- **Alternativas:** extrair os alertas do texto da resposta (frágil); pedir ao modelo um JSON (volta a depender dele).
+- **Por quê (*análise*):** reaproveitar o mecanismo das fontes (D14): `triar_pedido` grava os alertas calculados pelo código em `alertas_pedido` e o `chat_service` os devolve em `alerts`, zerados a cada turno.
+- **Vantagens:** alertas vêm do código, não do modelo. **Limitações:** só a triagem de pedidos os produz; a mensagem de cada alerta é fixa em português; o conjunto de tipos cresce junto com `TipoAlertaTriagem`.
+
+### D20. Conversão de unidade restrita a dúzia ↔ unidade
+- **Problema:** pedidos usam unidades diferentes da tabela de preços ("dúzias" de alface, "caixas" de goiaba); tratar uma como outra gera valor errado.
+- **Alternativas:** nunca converter (pedir sempre a unidade); converter com fatores estimados (maço ≈ kg, caixa ≈ kg).
+- **Por quê (*análise*):** só 1 dúzia = 12 unidades é exata e independe de produto; os demais fatores não estão nos dados e inventá-los falsearia o valor estimado.
+- **Consequências:** itens em maço, caixa etc. continuam sem valor estimado e geram `conversao_unidade:<produto>`; a decisão sobre outros fatores **continua com a equipe** (Arthur e David).

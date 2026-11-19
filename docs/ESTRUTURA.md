@@ -433,9 +433,9 @@ A escolha entre as opções do índice vetorial será feita na fase do RAG.
 |---|---|---|
 | Modelo Gemini (`MODEL`) | `gemini-3.5-flash-lite` (confirmado na documentação oficial e validado com chamadas reais) | — |
 | Modelo de embeddings | Em uso: `gemini-embedding-001` (`rag/vector_store.py`); disponibilidade na conta não verificada | Rawan |
-| Tamanho e sobreposição dos chunks | Valores atuais em `rag/chunker.py`; não calibrados com índice real | Rawan |
+| Tamanho e sobreposição dos chunks | 1000/150 caracteres (`rag/chunker.py`); índice real construído em 19/11/2026 (20 documentos, 52 trechos); outros tamanhos não foram comparados | Rawan |
 | Valores de "tipo" e "urgência" de pedido | Proposta implementada em `services/triagem_service.py` | Murilo e equipe |
-| Limiar para "evidência insuficiente" | 0,30 (o mesmo dos testes do retriever); não calibrado | Rawan |
+| Limiar para "evidência insuficiente" | 0,30 (o mesmo dos testes do retriever); conferido em 18 perguntas reais (com resposta: 0,20 a 0,27; sem resposta: 0,36 a 0,42) | Rawan |
 | Nomes dos campos do chat | `user_id`/`answer` implementados; documento de contratos usa `user`/`message` como exemplo | Murilo |
 | Persistir pedidos processados | Em aberto | Decisão do projeto |
 | Quais controllers REST opcionais ativar | Nenhum ativado; a interface só usa `POST /api/chat` | Necessidade da interface |
@@ -458,7 +458,7 @@ A escolha entre as opções do índice vetorial será feita na fase do RAG.
 | 1 | Fundação: FastAPI, configuração, `/api/health`, storage local, frontend mínimo | Concluída |
 | 2 | Estrutura completa e documentação | Concluída |
 | 3 | Dados, modelos e repositórios (CSV/JSON) | Concluída |
-| 4 | Orquestrador, Agente de Pedidos e API de chat | Implementada e testada (LLM simulado); validada com o Gemini real em 5 cenários |
+| 4 | Orquestrador, Agente de Pedidos e API de chat | Implementada e testada (LLM simulado); validada manualmente com o Gemini real (15 pedidos e 5 cenários) |
 | 5 | RAG e Agente de Documentos | Código implementado e testado; **índice vetorial não construído** e agente não validado com o Gemini real |
 | 6 | Agente de Produtores, relatórios e notificações | Implementada e testada (LLM simulado); não validada com o Gemini real |
 | 7 | Interface de chat conectada à API | Implementada; QA manual pendente (ver `docs/QA_CHECKLIST.md`) |
