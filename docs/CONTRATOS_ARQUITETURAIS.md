@@ -515,38 +515,38 @@ Para garantir a compatibilidade entre os componentes desenvolvidos pela equipe, 
 
 ---
 
-## 10. Decisões e alinhamentos pendentes
+## 10. Decisões e alinhamentos
 
-Os contratos estabelecem a estrutura de integração, mas alguns detalhes devem ser confirmados entre os responsáveis pelos módulos durante a implementação.
+Os contratos estabelecem a estrutura de integração, mas alguns detalhes foram confirmados entre os responsáveis pelos módulos durante a implementação.
 
 | Tema | Alinhamento necessário |
 |---|---|
-| Agentes especialistas | Confirmar os nomes, descrições e parâmetros das tools disponibilizadas a cada especialista. |
-| Tools | Confirmar as funções e os parâmetros necessários para cada operação de negócio. |
-| Services | Confirmar as assinaturas das funções e os modelos utilizados nas entradas e saídas. |
-| Repositories | Confirmar os formatos de retorno e as operações de consulta disponibilizadas. |
-| RAG | Confirmar o formato definitivo dos metadados e a disponibilidade da informação de página para cada tipo de documento. |
-| Chat | Confirmar os tipos e nomes definitivos dos campos de requisição e resposta em `chat_model.py`. |
+| Agentes especialistas | Confirmado em reunião |
+| Tools | Confirmado em reunião |
+| Services | Confirmado em reunião |
+| Repositories | Confirmado em reunião |
+| RAG | Confirmado em reunião |
+| Chat | Confirmado em reunião |
 | Sessões | Definir os detalhes de criação, recuperação e encerramento das sessões no `chat_service`. |
 | Erros | Alinhar as exceções específicas e os formatos de erro retornados pela API. |
-| Logging | Confirmar os eventos e níveis de log necessários para cada componente. |
+| Logging | Confirmado em reunião |
 
 As decisões devem ser documentadas e incorporadas aos contratos quando forem confirmadas pelos responsáveis.
 
 ### 10.1. Situação em 19/11/2026 (levantada na auditoria)
 
-O texto acima foi preservado. A tabela registra o que já está implementado em cada tema; **"confirmar" significa que a implementação existe, mas o responsável ainda não validou o contrato**.
+O texto acima foi preservado. A tabela registra o que já está implementado em cada tema; a equipe confirmou em reunião (informado por David, 19/11/2026) que a implementação atual está correta; a coluna "Situação" registra o resultado.
 
-| Tema | Implementação atual | Pendência |
+| Tema | Implementação atual | Situação |
 |---|---|---|
-| Agentes e tools | `pedidos_agent` (`obter_data_atual`, `resolver_prazo_pedido`, `triar_pedido`, `consultar_pedido_recebido`), `documentos_agent` (`obter_data_atual`, `consultar_documentos`) e `produtores_agent` (`obter_data_atual`, `consultar_produtor`, `resumo_produtor`, `dados_notificacao_produtor`). Todos via `AgentTool`; o especialista recebe só o texto da chamada. Toda tool tem parâmetros com valor padrão e devolve `status` `sucesso`/`erro` | Confirmar nomes e parâmetros (Murilo) |
-| Services | `PedidoService`, `TriagemService`, `DocumentoService`, `ProdutorService`, `RelatorioService` retornam modelos Pydantic | Confirmar assinaturas (Murilo, Arthur) |
+| Agentes e tools | `pedidos_agent` (`obter_data_atual`, `resolver_prazo_pedido`, `triar_pedido`, `consultar_pedido_recebido`), `documentos_agent` (`obter_data_atual`, `consultar_documentos`) e `produtores_agent` (`obter_data_atual`, `consultar_produtor`, `resumo_produtor`, `dados_notificacao_produtor`). Todos via `AgentTool`; o especialista recebe só o texto da chamada. Toda tool tem parâmetros com valor padrão e devolve `status` `sucesso`/`erro` | Confirmado em reunião |
+| Services | `PedidoService`, `TriagemService`, `DocumentoService`, `ProdutorService`, `RelatorioService` retornam modelos Pydantic | Confirmado em reunião |
 | Repositories | Retornam modelos de `models/`; leitura só via `Storage` | — |
-| RAG | Metadados `source`, `document_type`, `page` e `chunk_index`. O loader grava `page = 1` para `.txt`; o `DocumentoService` omite a página de `.txt` para cumprir a seção 5.4 | Confirmar com Rawan se o loader deve passar a gravar `page = None` em `.txt` |
-| Chat | `user_id`/`message` → `answer`/`session_id`/`agents_used`/`sources`/`alerts`/`status` | Confirmar nomes definitivos (Murilo, Raquel) |
-| Sessões | `InMemorySessionService`; `session_id` desconhecido ou de outro usuário gera uma sessão nova | Persistência de sessões (futuro) |
+| RAG | Metadados `source`, `document_type`, `page` e `chunk_index`. O loader grava `page = 1` para `.txt`; o `DocumentoService` omite a página de `.txt` para cumprir a seção 5.4 | Confirmado em reunião |
+| Chat | `user_id`/`message` → `answer`/`session_id`/`agents_used`/`sources`/`alerts`/`status` | Confirmado em reunião |
+| Sessões | `InMemorySessionService`; `session_id` desconhecido ou de outro usuário gera uma sessão nova | Confirmado em reunião; fora do escopo da primeira versão |
 | Erros | `{"detail": "..."}` com 422, 429 (limite da IA), 503 (IA não configurada ou chave recusada) e 502 | — |
-| Logging | `utils/logger.py`; o conteúdo das mensagens nunca é registrado | Confirmar eventos e níveis (Murilo) |
+| Logging | `utils/logger.py`; o conteúdo das mensagens nunca é registrado | Confirmado em reunião |
 
 ---
 

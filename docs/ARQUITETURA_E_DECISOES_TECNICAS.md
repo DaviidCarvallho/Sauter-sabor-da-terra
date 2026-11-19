@@ -471,7 +471,7 @@ Cada decisão indica a **origem**: *documentada* (registrada no repositório, co
 ### D12. Prazo, urgência e tipo resolvidos por código
 - **Problema:** o modelo não conhece a data de hoje e erra cálculo de calendário ("sexta" depende de "hoje").
 - **Por quê:** a resolução de datas deve usar uma referência temporal confiável (contratos, seção 3.3; *documentada*). Os limiares de urgência (2 e 14 dias) e o vocabulário de tipo são **proposta** derivada das mensagens reais, porque os dados não trazem tipo nem urgência (`DADOS.md` seção 8).
-- **Consequências:** estão em constantes (`TIPOS_PEDIDO`, `LIMITE_URGENTE_DIAS`, `LIMITE_PLANEJADO_DIAS`) para ajuste fácil; **aguardam validação da equipe**.
+- **Consequências:** estão em constantes (`TIPOS_PEDIDO`, `LIMITE_URGENTE_DIAS`, `LIMITE_PLANEJADO_DIAS`) para ajuste fácil; confirmados em reunião da equipe (informado por David, 19/11/2026).
 
 ### D13. Contrato de plug-in dos especialistas
 - **Problema:** especialistas de integrantes diferentes entrando no orquestrador sem conflito.
@@ -491,7 +491,7 @@ Cada decisão indica a **origem**: *documentada* (registrada no repositório, co
 ### D16. Página de `.txt` omitida nas citações
 - **Problema:** o loader grava `page = 1` para `.txt` e todos os documentos reais são `.txt`; as citações sairiam como "p. 1", o que seria inventar uma página.
 - **Por quê:** o contrato (seção 5.4) manda não inventar número. A correção foi feita no `documento_service` para não alterar o loader (de outra pessoa).
-- **Consequências:** **pendente** confirmar com a Rawan se o loader deve passar a gravar `None`.
+- **Consequências:** a equipe confirmou em reunião manter o loader como está (grava `page = 1`) e a omissão no `documento_service`.
 
 ### D17. Erros tipados no `chat_service` e mapeados no controller
 - **Problema:** devolver ao usuário uma mensagem útil sem vazar detalhes da API.

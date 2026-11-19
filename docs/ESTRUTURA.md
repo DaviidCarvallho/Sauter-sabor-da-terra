@@ -431,17 +431,17 @@ A escolha entre as opções do índice vetorial será feita na fase do RAG.
 - **Índice vetorial não versionado:** cada máquina precisa rodar `python -m rag.ingestion` (usa a API de embeddings); sem ele o Agente de Documentos responde "evidência insuficiente".
 - **Rastreabilidade de lotes** ainda não é coberta por nenhum agente.
 
-## 11. Decisões em aberto
+## 11. Decisões
 
 | Decisão | Situação | Depende de |
 |---|---|---|
 | Modelo Gemini (`MODEL`) | `gemini-3.5-flash-lite` (confirmado na documentação oficial e validado com chamadas reais) | — |
-| Modelo de embeddings | Em uso: `gemini-embedding-001` (`rag/vector_store.py`); disponibilidade na conta não verificada | Rawan |
-| Tamanho e sobreposição dos chunks | 1000/150 caracteres (`rag/chunker.py`); índice real construído em 19/11/2026 (20 documentos, 52 trechos); outros tamanhos não foram comparados | Rawan |
-| Valores de "tipo" e "urgência" de pedido | Proposta implementada em `services/triagem_service.py` | Murilo e equipe |
+| Modelo de embeddings | Em uso: `gemini-embedding-001` (`rag/vector_store.py`); confirmado em reunião | Rawan |
+| Tamanho e sobreposição dos chunks | 1000/150 caracteres (`rag/chunker.py`); índice real construído em 19/11/2026 (20 documentos, 52 trechos); mantido em reunião | Rawan |
+| Valores de "tipo" e "urgência" de pedido | Implementado em `services/triagem_service.py`; confirmado em reunião | Equipe |
 | Limiar para "evidência insuficiente" | 0,30 (o mesmo dos testes do retriever); conferido em 18 perguntas reais (com resposta: 0,20 a 0,27; sem resposta: 0,36 a 0,42) | Rawan |
-| Nomes dos campos do chat | `user_id`/`answer` implementados; documento de contratos usa `user`/`message` como exemplo | Murilo |
-| Persistir pedidos processados | Em aberto | Decisão do projeto |
+| Nomes dos campos do chat | `user_id`/`answer` implementados (aceita `user`); confirmado em reunião | Murilo |
+| Persistir pedidos processados | Decidido em reunião: a triagem não grava pedidos na primeira versão | Equipe |
 | Quais controllers REST opcionais ativar | Nenhum ativado; a interface só usa `POST /api/chat` | Necessidade da interface |
 
 ---|---|

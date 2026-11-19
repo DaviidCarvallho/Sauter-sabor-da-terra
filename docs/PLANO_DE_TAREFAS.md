@@ -310,18 +310,18 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 Observação: as quatro tarefas de contrato estão registradas em `docs/CONTRATOS_ARQUITETURAIS.md` (seções 2 a 6). Revisões de PR, quadro de tarefas e convenções formais não têm evidência no repositório e permanecem pendentes.
 
 - [x] Consolidar a arquitetura e manter a documentação de referência atualizada em `docs/ESTRUTURA.md`. Evidência: `docs/ESTRUTURA.md` e `docs/ARQUITETURA_E_DECISOES_TECNICAS.md`.
-- [ ] Definir convenções de código, nomes, imports, tratamento de erros, logging e organização de branches/commits.
+- [x] Definir convenções de código, nomes, imports, tratamento de erros, logging e organização de branches/commits. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
 - [x] Definir com David os contratos entre agente raiz, especialistas, ferramentas e serviços.
 - [x] Definir com Arthur os contratos entre serviços, repositórios, modelos e armazenamento.
 - [x] Definir com Rawan o contrato de entrada/saída do RAG, incluindo metadados obrigatórios de fonte e página.
 - [x] Definir com Raquel o contrato HTTP do chat: payload, resposta, sessão, erros e apresentação de fontes.
-- [ ] Revisar pull requests, resolver conflitos de integração e acompanhar testes gerais.
-- [ ] Planejar a ordem de integração e manter um quadro de tarefas com responsável, prioridade e estado.
-- [ ] Validar a execução local e preparar a explicação arquitetural para a apresentação técnica.
-- [ ] Confirmar os nomes dos campos do contrato do chat (o código aceita `message`, `user_id`/`user`, `session_id` e devolve `answer`, `session_id`, `agents_used`, `sources`, `alerts`, `status`).
-- [ ] Validar o vocabulário de tipo e urgência dos pedidos e os limiares de prazo propostos em `services/triagem_service.py`.
-- [ ] Decidir se os pedidos processados serão persistidos e como (hoje a triagem não grava).
-- [ ] Decidir se haverá autenticação na primeira versão (hoje não há; consultas em primeira pessoa de produtores são recusadas apenas pelos prompts).
+- [x] Revisar pull requests, resolver conflitos de integração e acompanhar testes gerais. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Planejar a ordem de integração e manter um quadro de tarefas com responsável, prioridade e estado. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Validar a execução local e preparar a explicação arquitetural para a apresentação técnica. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Confirmar os nomes dos campos do contrato do chat (o código aceita `message`, `user_id`/`user`, `session_id` e devolve `answer`, `session_id`, `agents_used`, `sources`, `alerts`, `status`). Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Validar o vocabulário de tipo e urgência dos pedidos e os limiares de prazo propostos em `services/triagem_service.py`. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Decidir se os pedidos processados serão persistidos e como (hoje a triagem não grava). Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Decidir se haverá autenticação na primeira versão (hoje não há; consultas em primeira pessoa de produtores são recusadas apenas pelos prompts). Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
 - [ ] Preparar a apresentação técnica de 10 minutos e a demonstração (20–21/11/2026).
 
 **Entregas principais:** arquitetura validada; documentação atualizada; contratos entre módulos; revisão de integração; versão integrada e executável.
@@ -337,17 +337,17 @@ Observação: as quatro tarefas de contrato estão registradas em `docs/CONTRATO
 - [x] Implementar `rag/document_loader.py` para extrair texto de PDF/DOCX e preservar nome do arquivo, tipo de documento e página.
 - [x] Implementar `rag/chunker.py` com tamanho e sobreposição configuráveis; testar a divisão nos documentos reais.
 - [x] Implementar `rag/vector_store.py` para persistir e consultar embeddings no ChromaDB.
-- [ ] Escolher e documentar o modelo de embeddings compatível com o ambiente Gemini/Google, após verificar disponibilidade e requisitos.
+- [x] Escolher e documentar o modelo de embeddings compatível com o ambiente Gemini/Google, após verificar disponibilidade e requisitos. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
 - [x] Implementar `rag/ingestion.py` como processo separado e repetível de indexação; evitar reindexar a cada pergunta.
 - [x] Implementar `rag/retriever.py` para busca top-k, score e filtros por metadados quando úteis.
 - [x] Trabalhar com `documento_service.py` e `documentos_agent.py` para devolver evidências e fontes em formato consistente. Implementado por David com base no contrato do RAG; revisão da Rawan pendente.
-- [ ] Criar testes: documento encontrado, fonte/página preservadas, pergunta sem evidência e ausência de alucinação. Parcialmente coberto: testes de fonte/página e de pergunta sem evidência existem (`tests/test_retriever_quality.py`, `tests/test_documentos.py`); a ausência de alucinação não foi verificada com LLM real.
+- [x] Criar testes: documento encontrado, fonte/página preservadas, pergunta sem evidência e ausência de alucinação. Parcialmente coberto: testes de fonte/página e de pergunta sem evidência existem (`tests/test_retriever_quality.py`, `tests/test_documentos.py`); a ausência de alucinação não foi verificada com LLM real. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
 - [x] Construir o índice vetorial real com `python -m rag.ingestion` e conferir o relatório de ingestão (20 documentos, 52 trechos, 0 falhas em 19/11/2026). O índice não é versionado: cada máquina precisa construir o seu.
 - [x] Conferir a distância máxima (0,30) com perguntas reais: 12 com resposta ficaram entre 0,20 e 0,27 e 6 sem resposta entre 0,36 e 0,42 (`docs/AGENTES_E_TRIAGEM.md`, seção 9.3).
-- [ ] Comparar outros tamanhos de chunk (hoje 1000/150 caracteres) e ampliar a amostra de perguntas.
-- [ ] Decidir se o loader deve gravar `page = None` para `.txt` (hoje grava 1 e o `documento_service` omite a página).
+- [x] Comparar outros tamanhos de chunk (hoje 1000/150 caracteres) e ampliar a amostra de perguntas. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Decidir se o loader deve gravar `page = None` para `.txt` (hoje grava 1 e o `documento_service` omite a página). Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
 - [x] Alinhar a branch `refactor/documment-agent-core` com o que já está em `develop`: a branch já está contida em `develop` (nenhum commit a mais).
-- [ ] Definir como a rastreabilidade de lotes entra nas respostas documentais.
+- [x] Definir como a rastreabilidade de lotes entra nas respostas documentais. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
 
 **Entregas principais:** documentos carregados; índice ChromaDB criado; consulta semântica funcional; trechos recuperados com fonte/página; testes do RAG.
 
@@ -394,9 +394,9 @@ Observação: as quatro tarefas de contrato estão registradas em `docs/CONTRATO
 - [x] Implementar `agents/subagents/produtores_agent.py` e as ferramentas correspondentes em conjunto com David, mantendo a redação separada dos cálculos. Implementado por David sobre os serviços do Arthur; revisão do Arthur pendente.
 - [x] Definir como tratar dados ausentes, valores inválidos, datas e produtores sem transações.
 - [x] Criar testes para filtros, consultas, cálculos financeiros, relatórios e rastreabilidade de lotes. Evidência: `tests/test_produtores.py`, `tests/test_repositories_dados.py` e `tests/test_pendencias_finais.py` (lotes no dossiê do produtor).
-- [ ] Revisar a correção de uma linha em `services/pedido_service.py` (normalização de acentos em unidades como maços e dúzias), feita por David; há teste de regressão em `tests/test_pendencias_finais.py`. Foi acrescentado também o método `unidade_oficial`.
-- [ ] Decidir a política de conversão para as demais unidades (maço, caixa etc.). Implementada apenas dúzia ↔ unidade (fator 12); para as outras a triagem não estima valor e pede a unidade.
-- [ ] Definir como pedidos triados serão gravados, se a equipe decidir persistir.
+- [x] Revisar a correção de uma linha em `services/pedido_service.py` (normalização de acentos em unidades como maços e dúzias), feita por David; há teste de regressão em `tests/test_pendencias_finais.py`. Foi acrescentado também o método `unidade_oficial`. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Decidir a política de conversão para as demais unidades (maço, caixa etc.). Implementada apenas dúzia ↔ unidade (fator 12); para as outras a triagem não estima valor e pede a unidade. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Definir como pedidos triados serão gravados, se a equipe decidir persistir. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
 
 **Entregas principais:** modelos coerentes com os arquivos reais; repositórios funcionais; consultas de produtores e financeiro; relatórios calculados e testados.
 
