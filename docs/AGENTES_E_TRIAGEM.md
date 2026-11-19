@@ -24,19 +24,23 @@ Princípio: **o LLM interpreta, o código verifica.** Safra, capacidade, preço,
 |---|---|
 | `agents/agent.py` | `root_agent`. Registra os especialistas como `AgentTool` (contrato da equipe). |
 | `agents/subagents/pedidos_agent.py` | Agente de Pedidos (`criar_pedidos_agent`). |
+| `agents/subagents/documentos_agent.py` | Agente de Documentos: responde com base no RAG, citando a fonte; admite quando não encontra. |
+| `agents/subagents/produtores_agent.py` | Agente de Produtores: resumos individuais e **rascunhos** de notificação (não envia). |
+| `services/documento_service.py`, `models/documento_model.py` | Consulta documental: limiar de distância 0,30 (o mesmo dos testes do retriever), evidência insuficiente explícita, página nunca inventada. |
 | `agents/prompts.py` | Todas as instruções. O orquestrador é montado só com os especialistas registrados. |
 | `agents/tools.py` | 4 ferramentas: `obter_data_atual`, `resolver_prazo_pedido`, `triar_pedido`, `consultar_pedido_recebido`. |
 | `agents/modelo.py` | Escolhe o modelo: `MODEL` do `.env` ou `gemini-3.5-flash-lite`. |
 | `services/triagem_service.py` | Resolução de prazo, urgência, tipo e informações ausentes. Usa o `PedidoService` sem alterá-lo. |
 | `models/chat_model.py`, `services/chat_service.py`, `api/chat_controller.py` | Camada de chat (ver seção 5). |
 
-### Contrato de plug-in dos especialistas (para Rawan e Arthur)
+### Contrato de plug-in dos especialistas
 
 O `root_agent` registra automaticamente todo especialista que exponha, no módulo em `agents/subagents/`, uma fábrica:
 
 ```python
-def criar_documentos_agent(model=None) -> Agent: ...   # Rawan
-def criar_produtores_agent(model=None) -> Agent: ...   # Arthur + David
+def criar_pedidos_agent(model=None) -> Agent: ...
+def criar_documentos_agent(model=None) -> Agent: ...
+def criar_produtores_agent(model=None) -> Agent: ...
 ```
 
 - O `name` do agente vira o nome da ferramenta (`documentos_agent`, `produtores_agent`) e aparece em `agents_used`.
@@ -54,6 +58,8 @@ Todas devolvem um dicionário com `status` (`"sucesso"` ou `"erro"`). Erros espe
 | `obter_data_atual` | Antes de interpretar prazo relativo; o modelo não conhece a data. |
 | `resolver_prazo_pedido(expressao, data_referencia)` | Converte "pra sexta", "amanhã", "04/nov" em data. Retorna `resolvido`, `ambiguo` ou `nao_reconhecido`. |
 | `triar_pedido(itens, comprador, prazo, tipo, urgencia_sinalizada, data_referencia)` | Valida o pedido em código. Nunca estima quantidade. |
+| `consultar_documentos(pergunta, max_resultados)` | (Agente de Documentos) Trechos dos documentos com fonte e página; grava as fontes no estado da sessão. |
+| `consultar_produtor`, `resumo_produtor`, `dados_notificacao_produtor` | (Agente de Produtores) Cadastro público, resumo financeiro calculado e dados para redigir notificação. Sem CPF, telefone, conta bancária nem texto de pedidos. |
 | `consultar_pedido_recebido(pedido_id)` | Pedido já recebido (`PED-AAAA-NNN`). Devolve a data de recebimento como referência e omite CPFs. |
 
 ## 4. Regras determinísticas da triagem
@@ -83,7 +89,7 @@ Safra, capacidade, preço, produtores elegíveis, certificação e restrições 
 Não havia implementação de `chat_model`, `chat_service` e `chat_controller` (esqueletos) e eles são necessários para o fluxo ponta a ponta, então foram implementados de forma mínima. **Pedimos revisão do Murilo e da Raquel.**
 
 - Requisição: `message` (1 a 4000 caracteres), `user_id` (aceita o alias `user`; padrão `anonimo`), `session_id` opcional.
-- Resposta: `answer`, `session_id`, `agents_used`, `sources` (`[]` até o Agente de Documentos preencher), `status`.
+- Resposta: `answer`, `session_id`, `agents_used`, `sources` (preenchido pelo Agente de Documentos; `[]` nas demais respostas e zerado a cada turno), `status`.
 - **Divergência a decidir:** o documento de contratos usa `message` na resposta e `user` na requisição como exemplo ilustrativo; o plano de tarefas, o frontend e os testes de QA usam `answer` e `user_id`. Adotamos estes últimos (o frontend lê `answer`, `reply`, `response` e `message`).
 - Sessão: em memória, isolada por usuário. `session_id` desconhecido ou de outro usuário gera sessão nova, devolvida na resposta (o contexto anterior não é reaproveitado).
 - Erros: 422 (corpo inválido), 503 (IA não configurada **ou chave recusada pela API**), 502 (falha do assistente). Corpo `{"detail": "..."}`, sem detalhes internos.
@@ -118,7 +124,9 @@ Os testes de agentes usam um **LLM simulado** (`tests/llm_simulado.py`): o `Runn
 
 - A validação real cobriu **6 turnos / 5 cenários** (seção 9), não os 15 pedidos de `pedidos.json`. Recomenda-se rodar os demais pela interface e conferir com `docs/QA_CHECKLIST.md`.
 - Free Tier com limite de requisições por minuto baixo: uma demonstração com várias mensagens seguidas pode receber 429 (o `chat_service` devolve 502 nesse caso). Considere ativar o faturamento/outro tier ou espaçar as mensagens.
-- Agentes de Documentos e de Produtores dependem de Rawan e Arthur; até lá o assistente informa que não responde esses assuntos.
+- **Agente de Documentos depende do índice vetorial**: sem `python -m rag.ingestion` executado (e `GOOGLE_API_KEY` para os embeddings), toda consulta retorna "evidência insuficiente". O limiar 0,30 não foi calibrado com perguntas reais. Rastreabilidade de lotes (`lotes.csv`) não é coberta por esse agente.
+- **Agente de Produtores não autentica quem pergunta**: o sistema atende a equipe; mensagens em primeira pessoa de um produtor sobre os próprios valores são recusadas pelo prompt (e o orquestrador não as encaminha), mas isso é uma salvaguarda do modelo, não controle de acesso. Autenticação continua pendente.
+- Os agentes de Documentos e de Produtores foram validados **só com LLM simulado** (testes automatizados); não foram executados com o Gemini real.
 - Sessões em memória (reiniciar o servidor apaga o contexto) e sem autenticação.
 - O resumo das ferramentas internas do especialista não aparece nos eventos do orquestrador (o `AgentTool` executa um runner aninhado); por isso `agents_used` lista os especialistas, não as ferramentas.
 - Capacidade é uma referência (limite explícito ou maior lote histórico), não garantia de produção futura.
