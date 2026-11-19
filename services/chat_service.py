@@ -32,7 +32,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from models.chat_model import ChatRequest, ChatResponse
+from models.chat_model import ChatRequest, ChatResponse, FonteDocumental
 from utils.config import get_settings
 from utils.logger import get_logger
 
@@ -43,6 +43,7 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = get_logger(__name__)
 
 APP_NAME = "sabor_da_terra"
+CHAVE_FONTES = "fontes_documentais"  # preenchida por agents.tools.consultar_documentos
 
 
 class ChatIndisponivelError(RuntimeError):
@@ -121,8 +122,12 @@ class ChatService:
         especialistas = {t.name for t in getattr(self._agente, "tools", []) if hasattr(t, "agent")}
         resposta, usados = "", []
         try:
+            # O estado das fontes é zerado a cada turno; o Agente de Documentos o preenche.
             async for evento in self._runner.run_async(
-                user_id=req.user_id, session_id=sessao.id, new_message=conteudo
+                user_id=req.user_id,
+                session_id=sessao.id,
+                new_message=conteudo,
+                state_delta={CHAVE_FONTES: []},
             ):
                 for chamada in evento.get_function_calls() or []:
                     if chamada.name in especialistas and chamada.name not in usados:
@@ -141,8 +146,14 @@ class ChatService:
             logger.error("O agente terminou sem resposta final.")
             raise ChatFalhaError("O assistente não produziu resposta.")
 
-        logger.info("Chat respondido (sessão %s…, agentes=%s)", sessao.id[:8], usados)
-        return ChatResponse(answer=resposta, session_id=sessao.id, agents_used=usados)
+        fontes = await self._fontes_da_sessao(req.user_id, sessao.id)
+        logger.info("Chat respondido (sessão %s…, agentes=%s, fontes=%d)", sessao.id[:8], usados, len(fontes))
+        return ChatResponse(answer=resposta, session_id=sessao.id, agents_used=usados, sources=fontes)
+
+    async def _fontes_da_sessao(self, user_id: str, session_id: str) -> list[FonteDocumental]:
+        sessao = await self._sessions.get_session(app_name=APP_NAME, user_id=user_id, session_id=session_id)
+        brutas = (sessao.state.get(CHAVE_FONTES) if sessao else None) or []
+        return [FonteDocumental(**f) for f in brutas if isinstance(f, dict) and f.get("source")]
 
 
 @lru_cache
