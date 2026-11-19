@@ -188,3 +188,38 @@ def test_triagem_nao_altera_o_pedido_original_do_servico(triagem):
     p = triagem.triar([_item("tomate", 5, "kg")], comprador="M",
                       prazo_informado="04/nov", data_referencia=QUARTA)
     assert p.tipo is None  # tipo só é definido quando o agente o informa
+
+
+# ---------- achados da bateria real com o Gemini ----------
+
+def test_prazo_em_formato_iso_e_aceito():
+    """O modelo reaproveita a data ISO devolvida pela nossa ferramenta (ex.: no follow-up)."""
+    r = resolver_prazo("2026-11-20", QUARTA)
+    assert r.status == "resolvido" and r.data == date(2026, 11, 20)
+    assert resolver_prazo("entrega em 2026-02-30", QUARTA).status == "nao_reconhecido"
+
+
+@pytest.mark.parametrize("produto, qtd, unidade", [
+    ("coentro", 20, "maços"), ("coentro", 20, "maco"), ("ovos caipira", 100, "dúzias"),
+    ("tomate", 10, "quilos"), ("alface", 50, "unidades"),
+])
+def test_unidade_equivalente_nao_gera_alerta_falso(triagem, produto, qtd, unidade):
+    """Bug do pedido_service: sinônimos acentuados ('maço', 'dúzia') nunca igualavam a unidade oficial."""
+    p = triagem.triar([_item(produto, qtd, unidade)], comprador="M", prazo_informado="04/nov",
+                      data_referencia=QUARTA)
+    assert "unidade_divergente" not in [a.tipo for a in p.alertas]
+    assert p.itens[0].valor_estimado is not None
+    assert not [x for x in p.informacoes_ausentes if x.startswith("conversao_unidade")]
+
+
+def test_unidade_diferente_da_tabela_nao_gera_valor_enganoso(triagem):
+    """'10 caixas' de goiaba não pode virar '10 kg x preço' sem fator de conversão."""
+    p = triagem.triar([_item("goiaba", 10, "caixas"), _item("tomate", 5, "kg")], comprador="M",
+                      prazo_informado="04/nov", data_referencia=QUARTA)
+    goiaba, tomate = p.itens
+    assert goiaba.unidade == "caixas" and goiaba.valor_estimado is None
+    assert not goiaba.desconto_aplicado
+    assert "conversao_unidade:goiaba" in p.informacoes_ausentes
+    assert "unidade_divergente" in [a.tipo for a in p.alertas]
+    # o total considera só os itens com valor confiável
+    assert tomate.valor_estimado is not None and p.valor_total_estimado == tomate.valor_estimado

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -67,6 +68,7 @@ _MESES_PT: dict[str, int] = {
     "out": 10, "outubro": 10, "nov": 11, "novembro": 11, "dez": 12, "dezembro": 12,
 }
 
+_RE_DATA_ISO = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 _RE_DATA_NUM = re.compile(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b")
 _RE_DATA_MES = re.compile(
     r"\b(\d{1,2})\s*(?:de\s+|/)?\s*(" + "|".join(_MESES_PT) + r")\b(?:\s*(?:de\s+|/)?\s*(\d{4}))?"
@@ -110,6 +112,16 @@ def resolver_prazo(expressao: str, data_referencia: date) -> PrazoResolvido:
     if not norm:
         return PrazoResolvido(expressao=expressao or "", status="nao_reconhecido",
                               explicacao="Prazo vazio.")
+
+    # ISO (AAAA-MM-DD): é o formato que as nossas ferramentas devolvem e que o modelo reaproveita.
+    m = _RE_DATA_ISO.search(norm)
+    if m:
+        try:
+            alvo = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            return PrazoResolvido(expressao=expressao, status="nao_reconhecido",
+                                  explicacao=f"Data inválida: {m.group(0)}.")
+        return _resolvido(expressao, alvo, f"Data explícita {alvo.strftime('%d/%m/%Y')}.")
 
     m = _RE_DATA_NUM.search(norm)
     if m:
@@ -250,6 +262,24 @@ class TriagemService:
                 and item_val.capacidade_referencia is None
             ):
                 ausentes.append(f"capacidade_nao_comprovada:{item_val.produto_informado}")
+
+        # Unidade diferente da tabela de preços (ex.: "caixas" x kg): sem fator de conversão
+        # nos dados, o valor estimado não é confiável e não deve ser apresentado.
+        itens_ok = []
+        for item_in, item_val in zip(itens, pedido.itens, strict=True):
+            if any(a.tipo == "unidade_divergente" for a in item_val.alertas):
+                itens_ok.append(item_val.model_copy(update={
+                    "unidade": item_in.unidade_informada, "valor_estimado": None,
+                    "desconto_atacado_pct": 0, "desconto_aplicado": False,
+                }))
+                ausentes.append(f"conversao_unidade:{item_val.produto_informado}")
+            else:
+                itens_ok.append(item_val)
+        valores = [i.valor_estimado for i in itens_ok if i.valor_estimado is not None]
+        pedido = pedido.model_copy(update={
+            "itens": itens_ok,
+            "valor_total_estimado": sum(valores, Decimal("0.00")) if valores else None,
+        })
 
         urgencia = classificar_urgencia(
             data_entrega, data_referencia, sinalizada_pelo_comprador=urgencia_sinalizada
