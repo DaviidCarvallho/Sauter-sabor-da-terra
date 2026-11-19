@@ -16,5 +16,6 @@ Relações:
 Observação:
     Só será ativado se a interface precisar. O fluxo principal passa por /api/chat.
 
-Status: esqueleto. Será implementado na Fase 6 (Agente de Produtores, relatórios e notificações).
+Status: esqueleto, opcional. Resumos e notificações já funcionam pelo chat (Agente de Produtores);
+esta rota só será criada se a interface precisar de consulta direta.
 """

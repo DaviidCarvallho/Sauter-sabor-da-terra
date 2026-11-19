@@ -16,14 +16,21 @@ Relações:
     Usa:        models.chat_model, services.chat_service
     Usado por:  main.py (registro do router)
 
-Erros: 422 (corpo inválido, pelo FastAPI), 503 (IA não configurada), 502 (falha do assistente).
+Erros: 422 (corpo inválido, pelo FastAPI), 503 (IA não configurada ou chave recusada),
+429 (limite de requisições da IA; tentar de novo) e 502 (falha do assistente).
 Formato: {"detail": "mensagem"}, que o frontend já interpreta.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from models.chat_model import ChatRequest, ChatResponse
-from services.chat_service import ChatFalhaError, ChatIndisponivelError, ChatService, get_chat_service
+from services.chat_service import (
+    ChatFalhaError,
+    ChatIndisponivelError,
+    ChatLimiteError,
+    ChatService,
+    get_chat_service,
+)
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -36,6 +43,11 @@ async def chat(req: ChatRequest, service: ChatService = Depends(get_chat_service
     except ChatIndisponivelError as exc:
         raise HTTPException(
             status_code=503, detail="O assistente de IA não está configurado no servidor."
+        ) from exc
+    except ChatLimiteError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail="Muitas solicitações à IA em pouco tempo. Aguarde alguns segundos e tente de novo.",
         ) from exc
     except ChatFalhaError as exc:
         raise HTTPException(
