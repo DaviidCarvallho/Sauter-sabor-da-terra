@@ -3,15 +3,15 @@
  * Etapa 3 (original): checkHealth() consulta /api/health e mostra a versão do servidor.
  * Etapa 7 (esta): chat conectado a POST /api/chat.
  *
- * CONTRATO ASSUMIDO DE POST /api/chat (ainda é esqueleto no backend; confirmar com
- * Murilo e David). Segundo docs/ESTRUTURA.md, models/chat_model.py terá usuário,
- * sessão, mensagem e agentes acionados. Os NOMES dos campos abaixo são suposição:
+ * CONTRATO DE POST /api/chat (implementado em models/chat_model.py e api/chat_controller.py):
  *   Requisição : { "message": "texto", "session_id": "abc" | null, "user_id": "u-123" }
- *   Resposta   : { "reply": "texto", "session_id": "abc",
- *                  "agents": ["pedidos_agent"],
- *                  "sources": [ { "source": "laudo.pdf", "page": 3 } ],
- *                  "alerts":  [ { "type": "fora_de_safra", "message": "...", "severity": "high" } ] }
- *   Erro       : { "detail": "mensagem" }  (padrão do FastAPI) ou { "error": { "message": "..." } }
+ *   Resposta   : { "answer": "texto", "session_id": "abc", "status": "success",
+ *                  "agents_used": ["pedidos_agent"],
+ *                  "sources": [ { "source": "contratos/x.txt", "page": null } ],
+ *                  "alerts": [ { "tipo": "fora_de_safra", "severidade": "alta", "mensagem": "...", "produto": "morango" } ] }
+ *   "alerts" vem do código (triagem determinística), só na triagem de pedidos; vazio nas demais respostas.
+ *   Erros      : { "detail": "mensagem" } com 422 (corpo inválido), 429 (limite da IA),
+ *                503 (IA não configurada) e 502 (falha do assistente).
  *
  * O normalizador aceita nomes alternativos de campo (ex.: response, answer,
  * agentes, agentes_acionados, file, filename, pagina), então pequenas diferenças

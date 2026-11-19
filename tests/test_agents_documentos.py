@@ -48,10 +48,10 @@ def servico_falso(monkeypatch):
 
 def test_servico_mapeia_trechos_e_nao_inventa_pagina():
     svc = DocumentoService(RetrieverFalso([_chunk(1, "Validade: 30/12/2026", page=None),
-                                           _chunk(2, "Outro trecho", page=3, fonte="contratos/x.txt")]))
+                                           _chunk(2, "Outro trecho", page=3, fonte="contratos/x.pdf")]))
     r = svc.consultar("validade da certificação da Ana")
     assert r.evidencia_suficiente and [t.page for t in r.trechos] == [None, 3]
-    assert [(f.source, f.page) for f in r.fontes] == [(CERT, None), ("contratos/x.txt", 3)]
+    assert [(f.source, f.page) for f in r.fontes] == [(CERT, None), ("contratos/x.pdf", 3)]
 
 
 def test_servico_usa_o_limiar_da_rawan_e_deduplica_fontes():
@@ -184,3 +184,15 @@ def test_fontes_nao_vazam_para_o_turno_seguinte(servico_falso):
     r2 = c.post("/api/chat", json={"user_id": "u1", "session_id": primeiro["session_id"],
                                    "message": "obrigado"}).json()
     assert r2["sources"] == []
+
+
+def test_txt_nunca_recebe_numero_de_pagina_mesmo_que_o_loader_grave_pagina_1():
+    """O DocumentLoader grava page=1 para .txt; citar 'p. 1' seria inventar página (contrato 5.4)."""
+    svc = DocumentoService(RetrieverFalso([_chunk(1, "texto", page=1)]))  # CERT termina em .txt
+    r = svc.consultar("pergunta")
+    assert r.trechos[0].page is None and r.fontes[0].page is None
+
+
+def test_pdf_preserva_a_pagina():
+    svc = DocumentoService(RetrieverFalso([_chunk(1, "texto", page=4, fonte="certificacoes/laudo.pdf")]))
+    assert svc.consultar("pergunta").trechos[0].page == 4

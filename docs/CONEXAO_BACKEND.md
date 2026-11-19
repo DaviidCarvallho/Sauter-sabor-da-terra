@@ -1,24 +1,18 @@
-# Conectar o chat ao backend FastAPI (roteiro para quando estiver pronto)
+# Conexão do chat com o backend FastAPI
 
-O frontend já chama `POST /api/chat` e está testado contra um servidor simulado (`qa/mock_server.py`).
-Este roteiro diz o que fazer quando o `chat_controller.py` for implementado (fase 4).
+O frontend chama `POST /api/chat`, que **já está implementado** (`api/chat_controller.py` → `services/chat_service.py` → `agents/`). Este documento descreve o contrato real, como verificar a conexão e os sintomas comuns. Antes do backend existir, a tela foi testada contra um servidor simulado (`qa/mock_server.py`), que continua útil para QA sem chave de API.
 
-## 1. Combinar o contrato com Murilo e David (antes de tudo)
+## 1. Contrato implementado
 
-O `models/chat_model.py` (esqueleto) já prevê: `ChatRequest` com `user_id`, `session_id` (opcional) e `message`; `ChatResponse` com texto da resposta, `session_id` e agentes acionados. Faltam `sources` e `alerts`, que o frontend já exibe se vierem. O `main.py` serve `static/` na mesma origem, então não há CORS.
-
-
-| Item | Frontend envia/espera hoje | Confirmar |
+| Item | Requisição / resposta | Observação |
 |---|---|---|
-| Requisição | `{ "message": str, "session_id": str \| null, "user_id": str }` | nomes e obrigatoriedade |
-| Resposta | `{ "reply", "session_id", "agents": [], "sources": [{"source","page"}], "alerts": [{"type","message","severity"}] }` | nomes e tipos |
-| Erro | `{ "detail": "..." }` (padrão FastAPI) | formato |
-| Tempo máximo | 60 s no navegador | se algum agente demora mais |
-| Mensagem vazia | `message` com `maxlength` 4000 | limite no schema Pydantic |
+| Requisição | `{ "message": str (1 a 4000), "session_id": str \| null, "user_id": str }` | `user_id` aceita o alias `user`; `session_id` vazio inicia uma conversa |
+| Resposta | `{ "answer", "session_id", "status", "agents_used": [], "sources": [{"source","page"}], "alerts": [{"tipo","severidade","mensagem","produto"}] }` | `sources` só vem preenchido pelo Agente de Documentos; `alerts` pela triagem de pedidos |
+| Alertas | enviados em `alerts` na triagem de pedidos | Calculados pelo código (não pelo modelo); `severidade` é `alta`, `media` ou `info`; a tela os exibe em destaque. O texto de `answer` também os menciona |
+| Erros | `{ "detail": "..." }` | 422 corpo inválido; 429 limite da IA (tentar de novo); 503 IA não configurada ou chave recusada; 502 falha do assistente |
+| Tempo máximo | 60 s no navegador | Uma resposta com vários agentes pode levar 10 a 20 s; no Free Tier, mais |
 
-O normalizador (`normalizarResposta` em `static/js/app.js`) já aceita `response`, `answer`, `resposta`,
-`fontes`, `alertas`, `agentes`, `file`, `filename`, `pagina`, entre outros. Se o contrato final usar
-outros nomes, ajuste só: `CONFIG` (rota), o corpo em `sendMessage()` e `normalizarResposta()`.
+`main.py` serve `static/` na mesma origem, então não há CORS. O normalizador (`normalizarResposta` em `static/js/app.js`) aceita nomes alternativos (`reply`, `response`, `agents`, `fontes`...), o que mantém o mock funcionando. Os nomes definitivos ainda dependem da confirmação do Murilo (ver `docs/CONTRATOS_ARQUITETURAIS.md`, seção 10.1).
 
 ## 2. Subir o backend real
 
@@ -34,7 +28,7 @@ Abra http://127.0.0.1:8000. O status no topo deve mostrar "Servidor online".
 python qa\verificar_backend.py
 ```
 Ele confere o contrato e os 4 cenários e salva `docs/evidencias/resultado_verificacao.md`
-(anexe esse arquivo ao PR como evidência). Se o chat ainda for esqueleto, ele avisa e termina.
+(anexe esse arquivo ao PR como evidência). Os cenários B e D só fazem sentido com o índice de documentos construído e a chave de API configurada (cada cenário chama o modelo).
 
 ## 4. Conferência manual na interface (cenários de aceitação)
 
@@ -49,16 +43,15 @@ Tire uma captura de cada cenário e salve em `docs/evidencias/`.
 
 ## 5. Testes do backend (tests/test_api.py)
 
-Os testes do chat já estão em `tests/test_api.py` (os 5 testes originais foram mantidos). Eles são pulados
-enquanto a rota não existir e passam a rodar sozinhos quando `/api/chat` for registrada em `main.py`.
-Os que chamam o modelo exigem `GOOGLE_API_KEY` (`ai_configured` verdadeiro em `/api/health`). Rode `pytest`.
+Os testes do chat estão em `tests/test_api.py` e `tests/test_chat_integracao.py`. Os de integração usam um LLM simulado e não gastam cota. Os 2 testes de `test_api.py` que chamam o modelo exigem `GOOGLE_API_KEY` (`ai_configured` verdadeiro em `/api/health`) e **consomem a API**: para uma execução sem custo, use `$env:GOOGLE_API_KEY=""; pytest`.
 
 ## 6. Sintomas comuns
 
 | O que aparece na tela | Causa provável |
 |---|---|
-| "O servidor não encontrou a rota do chat" (404) | rota não registrada em `main.py` |
-| "Essa função ainda não foi implementada" (501) | `chat_controller.py` ainda é esqueleto |
+| "O servidor não encontrou a rota do chat" (404) | servidor antigo em execução ou `main.py` sem o router de chat |
+| "Muitas mensagens em pouco tempo" (429) | limite de requisições da API do Gemini (Free Tier); aguardar e tentar de novo |
+| "O assistente de IA não está configurado" (503) | `GOOGLE_API_KEY` ausente ou recusada no `.env` |
 | "Mensagem não aceita: ..." (422) | nomes dos campos diferentes do schema Pydantic |
 | "resposta em formato inesperado" | backend devolveu texto, não JSON |
 | Resposta sem fontes/alertas | nomes de campo diferentes: ajustar `normalizarResposta()` |

@@ -1,7 +1,9 @@
 # Checklist de QA da interface — Sabor da Terra
 
 Responsável: Raquel (Membro 5, Interface / QA).
-Legenda: **OK-mock** = verificado contra o servidor simulado (`qa/mock_server.py`). **Pendente** = precisa do backend real.
+Legenda: **OK-mock** = verificado contra o servidor simulado (`qa/mock_server.py`). **Pendente** = precisa do backend real ou de conferência manual.
+
+> **Atualização de 19/11/2026.** O backend de chat existe e o visual mudou: fundo branco, tema sempre claro (o modo escuro foi removido) e acento verde no lugar do rosa. Os itens que citam tema escuro ou a cor goiaba descrevem o visual anterior e foram marcados abaixo. As capturas em `docs/evidencias/` mostram o visual anterior; `desktop-4-escuro.png` é histórica.
 
 ## 1. Funcional
 
@@ -54,22 +56,23 @@ Legenda: **OK-mock** = verificado contra o servidor simulado (`qa/mock_server.py
 
 | # | Largura | Resultado |
 |---|---|---|
-| 31 | Desktop: coluna central de 44rem, como a página original | OK-mock (captura) |
+| 31 | Desktop: coluna central (52rem), boas-vindas centralizadas e folhas decorativas nas laterais | OK (capturas em 1920, 1366 e 500 px em 19/11/2026) |
 | 32 | 500 px (celular): cabeçalho em duas linhas, chat ocupa a tela | OK-mock (captura) |
 | 33 | 360 px e 768 px | Pendente (manual) |
 | 34 | Chrome / Firefox / Edge / Safari | Chrome OK-mock; demais pendentes |
 
 ## 5. Cenários de aceitação (rodar com o backend real)
 
-Segundo `docs/ESTRUTURA.md`, hoje `api/chat_controller.py` e os agentes são esqueleto e os arquivos de `data/` ainda não foram fornecidos. Cada cenário só pode ser executado quando sua fase estiver pronta:
+O backend de chat, os três agentes e os dados já existem (`docs/ESTRUTURA.md`). O que limita a execução dos cenários é a **chave de API** (cada mensagem faz de 4 a 6 chamadas ao Gemini; Free Tier de ~15 por minuto, então espace as mensagens em ~30 s) e, para os cenários B e C, o **índice vetorial** (`python -m rag.ingestion`, já construído na máquina do David; cada máquina precisa construir o seu).
 
-| Cenário | Depende de |
+Situação da validação (19/11/2026):
+
+| Cenário | Situação |
 |---|---|
-| A. Triagem de pedido | Fase 3 (dados), fase 4 (orquestrador, Agente de Pedidos e API de chat) |
-| B. Consulta documental | Fase 5 (RAG e Agente de Documentos) e documentos em `data/` |
-| C. Pergunta sem evidência | Fase 5 (limiar de evidência insuficiente) |
-| D. Relatório de produtor | Fase 6 (Agente de Produtores) e `produtores.csv`, `financeiro.csv` |
-
+| A. Triagem de pedido | Validado pelo desenvolvedor com o Gemini real nos 15 pedidos de `pedidos.json` e em 5 cenários (ver `docs/AGENTES_E_TRIAGEM.md`, seção 9); **falta a execução de QA com captura de tela** |
+| B. Consulta documental | Validado com o Gemini real em 5 perguntas, com índice construído; **falta a execução de QA com captura de tela** |
+| C. Pergunta sem evidência | Validado com o Gemini real (contrato do Supermercado Extra e laudo do P005: "não encontrei"); **falta a execução de QA** |
+| D. Relatório de produtor | Validado com o Gemini real (resumo, aviso, produtor inexistente e recusa em primeira pessoa); **falta a execução de QA** |
 
 | Cenário | Mensagem de exemplo | Deve acontecer | Evidência |
 |---|---|---|---|
@@ -82,15 +85,15 @@ Observação: use nomes de produtores e produtos que existam em `data/`, senão 
 
 ## 6. Antes de abrir o Pull Request
 
-1. Os arquivos editam o `static/` existente no mesmo lugar, com os mesmos nomes e caminhos absolutos (`/css/style.css`, `/js/app.js`) do original. A identidade (goiaba, verde-folha) e os ids originais foram mantidos.
-2. Rode `pytest` no projeto. O `tests/test_api.py` já testa a página inicial e os estáticos e pode esperar algo do HTML antigo (por exemplo, o campo de mensagem agora está habilitado).
+1. Os arquivos editam o `static/` existente no mesmo lugar, com os mesmos nomes e caminhos absolutos (`/css/style.css`, `/js/app.js`) do original. Os ids originais foram mantidos; a identidade visual agora é fundo branco com acento verde.
+2. Rode `pytest` no projeto (use `$env:GOOGLE_API_KEY=""` para não gastar cota). Resultado em 19/11/2026: ver `docs/ARQUITETURA_E_DECISOES_TECNICAS.md`, seção 14.
 3. Rode `uvicorn main:app --reload` e confira em http://127.0.0.1:8000 que o status mostra "Servidor online · v…".
 
 ## 7. Como rodar os testes automáticos
 
 ```
-node qa/test_logica.js                        # lógica do frontend (13 testes)
-pytest tests/test_frontend_estatico.py        # arquivos estáticos (9 testes)
+node qa/test_logica.js                        # lógica do frontend
+pytest tests/test_frontend_estatico.py        # arquivos estáticos, tema e decoração
 python qa/mock_server.py                      # abre http://127.0.0.1:8001 sem backend
 ```
 
@@ -100,7 +103,7 @@ python qa/mock_server.py                      # abre http://127.0.0.1:8001 sem b
 | # | Verificação | Resultado |
 |---|---|---|
 | 40 | Tela inicial com 4 cartões de sugestão que preenchem o campo | OK-mock |
-| 41 | Tema escuro automático (`prefers-color-scheme`) legível, incluindo alertas e tabela | OK-mock (captura) |
+| 41 | ~~Tema escuro automático~~ **Removido**: a página fica sempre no tema claro (fundo branco) | Substituído (`tests/test_frontend_estatico.py`) |
 | 42 | Tabela de resposta com números alinhados à direita e rolagem horizontal no celular | OK-mock |
 | 43 | Botão "Copiar" na resposta do assistente | Pendente (manual: permissão da área de transferência) |
 | 44 | "Cancelar resposta" (botão e Esc) interrompe e devolve o texto ao campo | Pendente (manual) |
@@ -108,4 +111,4 @@ python qa/mock_server.py                      # abre http://127.0.0.1:8001 sem b
 | 46 | Sem rolagem horizontal da página em 390 px e 360 px | OK-mock |
 | 47 | Aviso "ainda consultando" após 10 s sem resposta (palavra `lento`) | Pendente (manual) |
 | 48 | Falhas 503, 501, resposta vazia e formato inesperado mostram mensagem própria | OK-mock |
-| 49 | Rodar `python qa/verificar_backend.py` contra o FastAPI real | Pendente (aguarda fase 4) |
+| 49 | Rodar `python qa/verificar_backend.py` contra o FastAPI real | Pendente (o backend existe; exige chave de API e gasta cota) |

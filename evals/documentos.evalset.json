@@ -1,0 +1,153 @@
+{
+  "eval_set_id": "documentos",
+  "name": "documentos",
+  "description": "Perguntas documentais com e sem evidência.",
+  "eval_cases": [
+    {
+      "evalId": "D2",
+      "conversation": [
+        {
+          "invocationId": "D2-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "Qual a temperatura de armazenamento do queijo coalho segundo a ficha técnica?"
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "2 °C a 8 °C, citando fichas_tecnicas/queijo_coalho.txt."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "Qual a temperatura de armazenamento do queijo coalho segundo a ficha técnica?"
+                },
+                "name": "documentos_agent"
+              },
+              {
+                "args": {
+                  "pergunta": "temperatura de armazenamento do queijo coalho ficha técnica"
+                },
+                "name": "consultar_documentos"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {}
+    },
+    {
+      "evalId": "D5",
+      "conversation": [
+        {
+          "invocationId": "D5-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "A Maria Silva (P001) tem certificação orgânica? Até quando vale?"
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Sim, vigente até 15/06/2027, citando certificacoes/cert_organica_maria_silva_P001.txt."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "A Maria Silva (P001) tem certificação orgânica? Até quando vale?"
+                },
+                "name": "documentos_agent"
+              },
+              {
+                "args": {},
+                "name": "obter_data_atual"
+              },
+              {
+                "args": {
+                  "pergunta": "Maria Silva P001 certificação orgânica validade"
+                },
+                "name": "consultar_documentos"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {}
+    },
+    {
+      "evalId": "D6",
+      "conversation": [
+        {
+          "invocationId": "D6-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "O contrato com o Supermercado Extra prevê quais condições de devolução de produtos?"
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Não encontrou a informação sobre o Supermercado Extra; não inventa."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "O contrato com o Supermercado Extra prevê quais condições de devolução de produtos?"
+                },
+                "name": "documentos_agent"
+              },
+              {
+                "args": {
+                  "pergunta": "O contrato com o Supermercado Extra prevê quais condições de devolução de produtos?"
+                },
+                "name": "consultar_documentos"
+              },
+              {
+                "args": {
+                  "pergunta": "Supermercado Extra condições de devolução de produtos contrato"
+                },
+                "name": "consultar_documentos"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {}
+    }
+  ],
+  "creation_timestamp": 0.0
+}

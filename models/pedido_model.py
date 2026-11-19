@@ -39,6 +39,7 @@ TipoAlertaTriagem = Literal[
     "certificacao_organica_indisponivel",
     "certificacao_vencida",
     "unidade_divergente",
+    "conversao_unidade_aplicada",
     "data_inconsistente",
     "produto_nao_encontrado",
     "informacao_ausente",

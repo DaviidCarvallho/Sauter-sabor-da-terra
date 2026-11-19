@@ -14,7 +14,7 @@ Relações:
     Usa:        repositories.document_repository, pypdf, python-docx
     Usado por:  rag.ingestion
 
-Status: esqueleto. Será implementado na Fase 5 (RAG e Agente de Documentos).
+Status: implementado e testado (ver docs/ARQUITETURA_E_DECISOES_TECNICAS.md).
 """
 from dataclasses import dataclass
 from io import BytesIO

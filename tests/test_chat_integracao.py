@@ -138,3 +138,21 @@ def test_chave_de_ia_invalida_retorna_503_e_nao_502():
     r = _cliente(servico).post("/api/chat", json={"message": "oi"})
     assert r.status_code == 503
     assert "API key" not in r.text and "API_KEY" not in r.text
+
+
+class _ResourceExhaustedError(Exception):
+    """Imita o erro que o ADK levanta quando a API do Gemini devolve 429."""
+
+
+class _LlmSemCota(ScriptedLlm):
+    async def generate_content_async(self, llm_request, stream=False):
+        raise _ResourceExhaustedError("429 RESOURCE_EXHAUSTED. You exceeded your current quota")
+        yield  # pragma: no cover
+
+
+def test_limite_de_requisicoes_da_ia_retorna_429_amigavel():
+    """Free Tier: ~15 chamadas/min. O erro é transitório e o frontend já oferece 'tentar de novo' em 429."""
+    servico = ChatService(agente=construir_root_agent(_LlmSemCota()))
+    r = _cliente(servico).post("/api/chat", json={"message": "oi"})
+    assert r.status_code == 429
+    assert "RESOURCE_EXHAUSTED" not in r.text and "quota" not in r.text.lower()
