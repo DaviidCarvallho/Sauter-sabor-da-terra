@@ -367,6 +367,8 @@ Responsabilidades dos campos:
 
 A estrutura definitiva dos campos e seus tipos deve ser mantida em conformidade com `models/chat_model.py`.
 
+> **Implementação atual (19/11/2026).** `models/chat_model.py` adota `user_id` (aceita `user` como alias), `session_id` e `message` na requisição (1 a 4000 caracteres), e `answer`, `session_id`, `agents_used`, `sources` e `status` na resposta. O exemplo acima é ilustrativo e usa `user` e `message` na resposta; a confirmação dos nomes definitivos está registrada na seção 10.1.
+
 ### 6.3. Processamento da requisição
 
 O fluxo esperado é:
@@ -530,6 +532,21 @@ Os contratos estabelecem a estrutura de integração, mas alguns detalhes devem 
 | Logging | Confirmar os eventos e níveis de log necessários para cada componente. |
 
 As decisões devem ser documentadas e incorporadas aos contratos quando forem confirmadas pelos responsáveis.
+
+### 10.1. Situação em 19/11/2026 (levantada na auditoria)
+
+O texto acima foi preservado. A tabela registra o que já está implementado em cada tema; **"confirmar" significa que a implementação existe, mas o responsável ainda não validou o contrato**.
+
+| Tema | Implementação atual | Pendência |
+|---|---|---|
+| Agentes e tools | `pedidos_agent` (`obter_data_atual`, `resolver_prazo_pedido`, `triar_pedido`, `consultar_pedido_recebido`), `documentos_agent` (`obter_data_atual`, `consultar_documentos`) e `produtores_agent` (`obter_data_atual`, `consultar_produtor`, `resumo_produtor`, `dados_notificacao_produtor`). Todos via `AgentTool`; o especialista recebe só o texto da chamada. Toda tool tem parâmetros com valor padrão e devolve `status` `sucesso`/`erro` | Confirmar nomes e parâmetros (Murilo) |
+| Services | `PedidoService`, `TriagemService`, `DocumentoService`, `ProdutorService`, `RelatorioService` retornam modelos Pydantic | Confirmar assinaturas (Murilo, Arthur) |
+| Repositories | Retornam modelos de `models/`; leitura só via `Storage` | — |
+| RAG | Metadados `source`, `document_type`, `page` e `chunk_index`. O loader grava `page = 1` para `.txt`; o `DocumentoService` omite a página de `.txt` para cumprir a seção 5.4 | Confirmar com Rawan se o loader deve passar a gravar `page = None` em `.txt` |
+| Chat | `user_id`/`message` → `answer`/`session_id`/`agents_used`/`sources`/`status` | Confirmar nomes definitivos (Murilo, Raquel) |
+| Sessões | `InMemorySessionService`; `session_id` desconhecido ou de outro usuário gera uma sessão nova | Persistência de sessões (futuro) |
+| Erros | `{"detail": "..."}` com 422, 429 (limite da IA), 503 (IA não configurada ou chave recusada) e 502 | — |
+| Logging | `utils/logger.py`; o conteúdo das mensagens nunca é registrado | Confirmar eventos e níveis (Murilo) |
 
 ---
 
