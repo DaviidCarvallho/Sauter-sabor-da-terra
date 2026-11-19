@@ -29,7 +29,7 @@ def test_html_mantem_identidade_e_ids_originais():
 
 def test_css_mantem_tokens_de_marca():
     css = ler("css/style.css")
-    assert "--guava: #c4405f" in css and "--leaf: #2d6a3e" in css
+    assert "--leaf: #2d6a3e" in css and "--accent: #2f8049" in css
 
 
 def test_campo_de_mensagem_habilitado_e_com_rotulo():
@@ -70,9 +70,9 @@ def test_css_respeita_movimento_reduzido_e_foco_visivel():
     assert ":focus-visible" in css
 
 
-def test_css_tem_tema_escuro_e_layout_movel():
+def test_css_so_tema_claro_e_layout_movel():
     css = (STATIC / "css" / "style.css").read_text(encoding="utf-8")
-    assert "prefers-color-scheme: dark" in css
+    assert "prefers-color-scheme" not in css and "color-scheme: light;" in css
     assert "max-width" in css and "40rem" in css
 
 
@@ -86,3 +86,10 @@ def test_js_preserva_session_id_e_historico():
     js = (STATIC / "js" / "app.js").read_text(encoding="utf-8")
     assert "session_id" in js and "sessionStorage" in js
     assert "chaveHistorico" in js
+
+
+def test_css_visual_fundo_branco_e_verde():
+    css = ler("css/style.css")
+    assert "--bg: #ffffff" in css and "--surface: #ffffff" in css   # fundo branco
+    assert "--leaf: #2d6a3e" in css and "--accent: #2f8049" in css  # restante em verde
+    assert "guava" not in css.lower()                               # sem o antigo acento rosa
