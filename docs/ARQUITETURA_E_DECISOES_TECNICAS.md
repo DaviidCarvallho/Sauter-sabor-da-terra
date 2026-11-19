@@ -292,7 +292,7 @@ flowchart LR
     H -. "RETRIEVAL_QUERY" .-> EMB
 ```
 
-- **Ingestão** é um processo separado e repetível (`python -m rag.ingestion`), não roda a cada pergunta. O índice (`.vectorstore/`) é um artefato derivado, **não versionado**: cada máquina precisa gerá-lo, e isso usa a API de embeddings.
+- **Ingestão** é um processo separado e repetível (`python -m rag.ingestion`), não roda a cada pergunta. É **idempotente**: substitui os trechos de cada documento (`replace_document`) e, se um documento falhar, continua com os demais e registra o erro no relatório final. Os chunks são medidos em **caracteres** (1000, com sobreposição de 150) e o corte prefere uma quebra de linha ou um espaço. O índice (`.vectorstore/`) é um artefato derivado, **não versionado**: cada máquina precisa gerá-lo, e isso usa a API de embeddings.
 - **Consulta**: o `documento_service` pede ao `retriever` os 5 trechos mais próximos (máximo 8) e descarta os com distância acima de **0,30** (o mesmo valor usado nos testes de qualidade do retriever). Sem nenhum trecho, o resultado é **evidência insuficiente** e o agente diz que não encontrou.
 - **Metadados** preservados: `source` (documento), `document_type`, `page` e `chunk_index`. O loader grava `page = 1` para `.txt`, mas arquivo de texto não tem páginas e o contrato manda não inventar número; por isso o `documento_service` **omite a página de `.txt`** e preserva a de PDF/DOCX.
 - **Fontes estruturadas**: a ferramenta grava as fontes no estado da sessão (o ADK encaminha o estado do especialista à sessão do orquestrador) e o `chat_service` as devolve em `sources`, zeradas a cada turno.
