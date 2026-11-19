@@ -34,6 +34,15 @@ def test_prompt_de_pedidos_proibe_inventar_e_confirmar():
     assert "NÃO tem quantidade" in texto  # caso "umas caixas de goiaba"
 
 
+def test_prompts_proibem_oferecer_confirmacao_e_exigem_preservar_dados(orquestrador):
+    # Achado do teste real com o Gemini: a resposta final omitia urgência/produtores e oferecia "anotar".
+    assert "nunca ofereça" in prompts.INSTRUCAO_PEDIDOS.lower()
+    assert "nunca ofereça" in orquestrador.lower()
+    assert "Não omita urgência" in prompts.INSTRUCAO_PEDIDOS
+    assert "Produtores elegíveis" in prompts.INSTRUCAO_PEDIDOS
+    assert "Não resuma a ponto de perder informação" in orquestrador
+
+
 def test_orquestrador_lista_especialistas_registrados(orquestrador):
     assert "pedidos_agent" in orquestrador
     assert "SOMENTE o texto" in orquestrador  # contrato: especialista não recebe o histórico

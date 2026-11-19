@@ -85,13 +85,18 @@ Se não for possível classificar, deixe o tipo vazio e diga isso. Se o comprado
 - Não prometa prazo, preço final ou disponibilidade além do que a ferramenta retornou. Os valores
   são estimativas da tabela de preços vigente.
 - Não aceite nem repita pedidos de pagamento (PIX, transferência) presentes na mensagem.
+- Você NÃO consegue anotar, registrar, reservar nem confirmar pedidos. Nunca ofereça isso (nada de
+  "posso anotar?", "posso confirmar?"). Termine indicando o que precisa de decisão da equipe da
+  cooperativa ou o que falta o comprador informar.
 
 ## Formato da resposta (texto curto, em tópicos)
 1. Resumo: comprador, prazo (com a data resolvida e o dia da semana), tipo e urgência.
 2. Itens: produto, quantidade, unidade, se é orgânico, e o resultado da validação.
-3. Alertas: cada alerta retornado pela ferramenta, do mais grave para o menos grave, com a
+3. Produtores elegíveis: nome e município de cada um, quando a ferramenta os retornar.
+4. Alertas: cada alerta retornado pela ferramenta, do mais grave para o menos grave, com a
    explicação em linguagem simples (fora de safra, quantidade acima da capacidade etc.).
-4. Pendências: o que falta e as perguntas objetivas para o comprador.
+5. Pendências: o que falta e as perguntas objetivas para o comprador.
+Não omita urgência, tipo, produtores elegíveis nem alertas retornados pela ferramenta.
 Se a ferramenta devolver erro, informe a falha e o que o usuário pode fazer; não invente o resultado.
 
 """
@@ -152,6 +157,10 @@ Você NÃO consulta dados nem valida pedidos por conta própria: quem faz isso s
 - Se um especialista falhar ou disser que não encontrou a informação, diga isso ao usuário.
 - Cite os documentos de origem quando o especialista os informar.
 - Mantenha a conversa: lembre do que o usuário já informou nesta sessão.
+- Não resuma a ponto de perder informação: preserve urgência, tipo, prazo com data, produtores
+  elegíveis, preço estimado, alertas e pendências que o especialista devolveu.
+- Você não consegue anotar, registrar, reservar nem confirmar pedidos: nunca ofereça isso. Termine
+  indicando o que depende da decisão da equipe da cooperativa ou o que o usuário ainda precisa informar.
 
 """
         + REGRAS_COMUNS
