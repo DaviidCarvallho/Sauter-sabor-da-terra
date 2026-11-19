@@ -1,6 +1,6 @@
 # Agentes, ferramentas e triagem de pedidos
 
-Responsável: David (Engenheiro de IA). Este documento descreve o que está implementado em `agents/`, `services/triagem_service.py` e na camada de chat, como testar e o que ainda depende de outros integrantes. Reflete o código real; quando algo é decisão proposta (não confirmada pela equipe), isso está dito.
+Responsável: David (Engenheiro de IA). Visão geral da arquitetura, diagramas e decisões: `docs/ARQUITETURA_E_DECISOES_TECNICAS.md`. Este documento detalha agentes, ferramentas e triagem. Este documento descreve o que está implementado em `agents/`, `services/triagem_service.py` e na camada de chat, como testar e o que ainda depende de outros integrantes. Reflete o código real; quando algo é decisão proposta (não confirmada pela equipe), isso está dito.
 
 ## 1. Fluxo de uma mensagem
 
@@ -26,7 +26,7 @@ Princípio: **o LLM interpreta, o código verifica.** Safra, capacidade, preço,
 | `agents/subagents/pedidos_agent.py` | Agente de Pedidos (`criar_pedidos_agent`). |
 | `agents/subagents/documentos_agent.py` | Agente de Documentos: responde com base no RAG, citando a fonte; admite quando não encontra. |
 | `agents/subagents/produtores_agent.py` | Agente de Produtores: resumos individuais e **rascunhos** de notificação (não envia). |
-| `services/documento_service.py`, `models/documento_model.py` | Consulta documental: limiar de distância 0,30 (o mesmo dos testes do retriever), evidência insuficiente explícita, página nunca inventada. |
+| `services/documento_service.py`, `models/documento_model.py` | Consulta documental: limiar de distância 0,30 (o mesmo dos testes do retriever), evidência insuficiente explícita, página nunca inventada (para `.txt` a página é omitida, pois o loader grava `page = 1`). |
 | `agents/prompts.py` | Todas as instruções. O orquestrador é montado só com os especialistas registrados. |
 | `agents/tools.py` | 4 ferramentas: `obter_data_atual`, `resolver_prazo_pedido`, `triar_pedido`, `consultar_pedido_recebido`. |
 | `agents/modelo.py` | Escolhe o modelo: `MODEL` do `.env` ou `gemini-3.5-flash-lite`. |
@@ -92,7 +92,7 @@ Não havia implementação de `chat_model`, `chat_service` e `chat_controller` (
 - Resposta: `answer`, `session_id`, `agents_used`, `sources` (preenchido pelo Agente de Documentos; `[]` nas demais respostas e zerado a cada turno), `status`.
 - **Divergência a decidir:** o documento de contratos usa `message` na resposta e `user` na requisição como exemplo ilustrativo; o plano de tarefas, o frontend e os testes de QA usam `answer` e `user_id`. Adotamos estes últimos (o frontend lê `answer`, `reply`, `response` e `message`).
 - Sessão: em memória, isolada por usuário. `session_id` desconhecido ou de outro usuário gera sessão nova, devolvida na resposta (o contexto anterior não é reaproveitado).
-- Erros: 422 (corpo inválido), 503 (IA não configurada **ou chave recusada pela API**), 502 (falha do assistente). Corpo `{"detail": "..."}`, sem detalhes internos.
+- Erros: 422 (corpo inválido), 429 (limite de requisições da IA; tentar de novo), 503 (IA não configurada **ou chave recusada pela API**), 502 (falha do assistente). Corpo `{"detail": "..."}`, sem detalhes internos.
 - Logs: sessão (prefixo), agentes acionados e tipo da exceção; nunca o conteúdo das mensagens.
 - Imports do ADK são tardios: o servidor sobe (health, frontend) mesmo sem o extra `ai`.
 
@@ -104,7 +104,7 @@ Copy-Item .env.example .env     # preencher GOOGLE_API_KEY
 ```
 
 - `GOOGLE_API_KEY`: chave do Google AI Studio (Gemini API). Não use credenciais do Google Cloud/Vertex junto com ela.
-- `MODEL=gemini-3.5-flash-lite`: identificador confirmado na documentação oficial (estável/GA) e **validado com chamadas reais** (seção 9). Free Tier: o modelo tem camada gratuita ("Free of charge"); os limites numéricos (RPM/TPM/RPD) não estão nas docs, só no painel https://aistudio.google.com/rate-limit. Na prática, cada mensagem custa de 4 a 6 chamadas ao modelo e um rajada de ~15 chamadas em cerca de 1 minuto resultou em `429 RESOURCE_EXHAUSTED`; com 30 s entre mensagens não houve 429 (uma resposta demorou ~104 s, provável backoff interno do cliente).
+- `MODEL=gemini-3.5-flash-lite`: identificador confirmado na documentação oficial (estável/GA) e **validado com chamadas reais** (seção 9). Free Tier: o modelo tem camada gratuita ("Free of charge"); os limites numéricos (RPM/TPM/RPD) não estão nas docs, só no painel https://aistudio.google.com/rate-limit. Na prática, cada mensagem custa de 4 a 6 chamadas ao modelo e uma rajada de ~15 chamadas em cerca de 1 minuto resultou em `429 RESOURCE_EXHAUSTED`; com 30 s entre mensagens não houve 429 (uma resposta demorou ~104 s, provável backoff interno do cliente).
 - Não ajustamos `temperature`, `top_p` nem `top_k`: nos Gemini 3.x o Google recomenda os valores padrão.
 - `.env` está no `.gitignore`; a chave nunca é registrada em log.
 
@@ -123,7 +123,7 @@ Os testes de agentes usam um **LLM simulado** (`tests/llm_simulado.py`): o `Runn
 ## 8. Limitações conhecidas
 
 - A validação real cobriu **6 turnos / 5 cenários** (seção 9), não os 15 pedidos de `pedidos.json`. Recomenda-se rodar os demais pela interface e conferir com `docs/QA_CHECKLIST.md`.
-- Free Tier com limite de requisições por minuto baixo: uma demonstração com várias mensagens seguidas pode receber 429 (o `chat_service` devolve 502 nesse caso). Considere ativar o faturamento/outro tier ou espaçar as mensagens.
+- Free Tier com limite de requisições por minuto baixo: uma demonstração com várias mensagens seguidas pode receber 429 (o `chat_service` devolve 429 com mensagem amigável nesse caso). Considere ativar o faturamento/outro tier ou espaçar as mensagens.
 - **Agente de Documentos depende do índice vetorial**: sem `python -m rag.ingestion` executado (e `GOOGLE_API_KEY` para os embeddings), toda consulta retorna "evidência insuficiente". O limiar 0,30 não foi calibrado com perguntas reais. Rastreabilidade de lotes (`lotes.csv`) não é coberta por esse agente.
 - **Agente de Produtores não autentica quem pergunta**: o sistema atende a equipe; mensagens em primeira pessoa de um produtor sobre os próprios valores são recusadas pelo prompt (e o orquestrador não as encaminha), mas isso é uma salvaguarda do modelo, não controle de acesso. Autenticação continua pendente.
 - Os agentes de Documentos e de Produtores foram validados **só com LLM simulado** (testes automatizados); não foram executados com o Gemini real.
