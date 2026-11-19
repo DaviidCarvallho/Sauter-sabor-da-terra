@@ -27,7 +27,7 @@ def responder_chat(msg: str, sid: str):
     m = msg.lower()
     if "morango" in m or "pedido" in m or "kg" in m:
         return {
-            "reply": "Pedido interpretado:\n- **Comprador:** Restaurante Brasa\n- **Itens:** morango 40 kg; queijo coalho 20 kg\n- **Prazo:** sexta-feira (urgência média)\n\nSugiro alocar o morango com 2 produtores para fechar a quantidade.",
+            "reply": "Pedido interpretado para o **Restaurante Brasa**, prazo sexta-feira (urgência média).\n\n| Produto | Quantidade | Produtores sugeridos |\n|---|--:|---|\n| Morango | 40 kg | Antônio Silva; Maria Souza |\n| Queijo coalho | 20 kg | Laticínios Serra Azul |\n\nSugiro alocar o morango com **2 produtores** para fechar a quantidade.",
             "session_id": sid,
             "agents": ["root_agent", "pedidos_agent"],
             "sources": [],
@@ -77,7 +77,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/api/health":
-            return self._json(200, {"status": "ok"})
+            return self._json(200, {"status": "ok", "version": "0.3.0-mock"})
         caminho = self.path.split("?")[0]
         if caminho == "/":
             caminho = "/index.html"
@@ -90,6 +90,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", tipo + ("; charset=utf-8" if tipo.startswith("text/") or tipo.endswith("javascript") else ""))
         self.send_header("Content-Length", str(len(dados)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(dados)
 

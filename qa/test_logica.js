@@ -16,7 +16,7 @@ t("resposta completa é normalizada", () => {
   });
   assert.strictEqual(r.texto, "Olá");
   assert.strictEqual(r.sessionId, "s1");
-  assert.deepStrictEqual(r.fontes, [{ arquivo: "a.pdf", pagina: 3 }, { arquivo: "b.docx", pagina: null }]);
+  assert.deepStrictEqual(r.fontes, [{ arquivo: "a.pdf", pagina: 3, tipo: "PDF" }, { arquivo: "b.docx", pagina: null, tipo: "DOCX" }]);
   assert.strictEqual(r.alertas[0].nivel, "alto");
   assert.strictEqual(r.alertas[0].rotulo, "Fora de safra");
   assert.strictEqual(r.vazia, false);
@@ -25,11 +25,11 @@ t("resposta completa é normalizada", () => {
 t("nomes alternativos de campo (response/answer/pagina)", () => {
   assert.strictEqual(L.normalizarResposta({ response: "x" }).texto, "x");
   assert.strictEqual(L.normalizarResposta({ answer: "y" }).texto, "y");
-  assert.deepStrictEqual(L.normalizarFonte({ arquivo: "c.pdf", pagina: 7 }), { arquivo: "c.pdf", pagina: 7 });
+  assert.deepStrictEqual(L.normalizarFonte({ arquivo: "c.pdf", pagina: 7, tipo: "PDF" }), { arquivo: "c.pdf", pagina: 7, tipo: "PDF" });
 });
 
 t("fonte como texto simples", () => {
-  assert.deepStrictEqual(L.normalizarFonte("laudo.pdf"), { arquivo: "laudo.pdf", pagina: null });
+  assert.deepStrictEqual(L.normalizarFonte("laudo.pdf"), { arquivo: "laudo.pdf", pagina: null, tipo: "PDF" });
 });
 
 t("resposta vazia é detectada", () => {
@@ -101,6 +101,60 @@ t("501 (controller ainda esqueleto) tem mensagem própria e não oferece tentar 
   const e = L.descreverErro("http", 501);
   assert.ok(/ainda não foi implementada/i.test(e.mensagem));
   assert.strictEqual(e.podeTentarDeNovo, false);
+});
+
+t("tipoArquivo deduz a extensão", () => {
+  assert.strictEqual(L.tipoArquivo("laudo.pdf"), "PDF");
+  assert.strictEqual(L.tipoArquivo("contrato.docx"), "DOCX");
+  assert.strictEqual(L.tipoArquivo("sem_extensao"), "DOC");
+});
+
+t("tabela markdown vira bloco table com alinhamento", () => {
+  const b = L.parseTextoSimples("Resumo\n\n| Item | Qtd |\n|:--|--:|\n| Morango | 40 kg |\n| Queijo | 20 kg |\n\nFim");
+  assert.deepStrictEqual(b.map(x => x.tipo), ["p", "table", "p"]);
+  assert.deepStrictEqual(b[1].cab, ["Item", "Qtd"]);
+  assert.deepStrictEqual(b[1].alinh, ["left", "right"]);
+  assert.strictEqual(b[1].linhas.length, 2);
+  assert.deepStrictEqual(b[1].linhas[0], ["Morango", "40 kg"]);
+});
+
+t("linha com barra sem separador não vira tabela", () => {
+  const b = L.parseTextoSimples("a | b\nc | d");
+  assert.strictEqual(b[0].tipo, "p");
+});
+
+t("títulos markdown", () => {
+  const b = L.parseTextoSimples("## Itens\ntexto");
+  assert.strictEqual(b[0].tipo, "h");
+  assert.strictEqual(b[0].texto, "Itens");
+});
+
+t("inline: negrito, itálico, código e link http", () => {
+  const p = L.partesInline("**a** *b* `c` [d](https://x.com/y) fim");
+  assert.deepStrictEqual(p.map(x => x.tipo), ["negrito", "texto", "italico", "texto", "codigo", "texto", "link", "texto"]);
+  assert.strictEqual(p[6].href, "https://x.com/y");
+});
+
+t("links javascript: não viram link", () => {
+  const p = L.partesInline("[x](javascript:alert(1))");
+  assert.ok(p.every(x => x.tipo !== "link"));
+});
+
+t("ehNumerico reconhece quantidades e valores", () => {
+  ["40 kg", "R$ 4.280,00", "12%", "7"].forEach(v => assert.ok(L.ehNumerico(v), v));
+  ["Morango", "sexta"].forEach(v => assert.ok(!L.ehNumerico(v), v));
+});
+
+t("formatarHora devolve HH:MM", () => {
+  assert.ok(/^\d{2}:\d{2}$/.test(L.formatarHora(Date.now())));
+  assert.strictEqual(L.formatarHora("lixo"), "");
+});
+
+t("aceita o campo 'texto' do ChatResponse do backend", () => {
+  const r = L.normalizarResposta({ texto: "Olá", session_id: "s1", agents: ["pedidos_agent"] });
+  assert.strictEqual(r.texto, "Olá");
+  assert.strictEqual(r.sessionId, "s1");
+  assert.deepStrictEqual(r.agentes, ["Pedidos"]);
 });
 
 console.log(`\n${ok} testes passaram` + (process.exitCode ? " (há falhas)" : ""));
