@@ -50,6 +50,10 @@ class ChatIndisponivelError(RuntimeError):
     """IA não configurada ou dependências ausentes no servidor."""
 
 
+class ChatLimiteError(RuntimeError):
+    """Cota/limite de requisições da API de IA atingido (429): transitório, vale tentar de novo."""
+
+
 class ChatFalhaError(RuntimeError):
     """Falha ao executar o agente (modelo indisponível, erro inesperado, resposta vazia)."""
 
@@ -63,6 +67,11 @@ def _credencial_invalida(exc: Exception) -> bool:
     if not isinstance(exc, errors.ClientError):
         return False
     return exc.code in (401, 403) or "API_KEY_INVALID" in str(exc)
+
+
+def _limite_excedido(exc: Exception) -> bool:
+    """True para 429 RESOURCE_EXHAUSTED (o ADK pode embrulhar o erro em outra classe)."""
+    return "RESOURCE_EXHAUSTED" in str(exc) or "ResourceExhausted" in type(exc).__name__
 
 
 class ChatService:
@@ -139,6 +148,9 @@ class ChatService:
                 # Erro de configuração do servidor, não falha transitória: vira 503 na API.
                 logger.error("Credencial de IA recusada pela API (chave inválida ou sem permissão).")
                 raise ChatIndisponivelError("Credencial de IA inválida.") from exc
+            if _limite_excedido(exc):
+                logger.warning("Limite de requisições da API de IA atingido (429).")
+                raise ChatLimiteError("Limite de requisições da IA atingido.") from exc
             logger.error("Falha ao executar o agente (%s)", type(exc).__name__)
             raise ChatFalhaError("Falha ao executar o assistente.") from exc
 
