@@ -47,7 +47,7 @@ def sample_chunks():
                 "source": "teste.txt",
                 "document_type": "teste",
                 "page": 1,
-                "chunk_index": 1,
+                "chunk_index": 0,
             },
         ),
         DocumentChunk(
@@ -56,7 +56,7 @@ def sample_chunks():
                 "source": "teste.txt",
                 "document_type": "teste",
                 "page": 1,
-                "chunk_index": 2,
+                "chunk_index": 1,
             },
         ),
     ]
@@ -128,6 +128,7 @@ def test_delete_document_inexistente(vector_store):
 
     assert removed == 0
 
+
 def test_replace_document(vector_store, sample_chunks):
     vector_store.add_chunks(sample_chunks)
 
@@ -165,10 +166,12 @@ def test_replace_document(vector_store, sample_chunks):
     )
 
     assert len(results) == 2
+
     assert all(
         chunk.text in [item.text for item in new_chunks]
         for _, chunk, _ in results
-)
+    )
+
 
 def test_replace_document_preserva_antigos_se_embedding_falhar(
     vector_store,
@@ -178,7 +181,9 @@ def test_replace_document_preserva_antigos_se_embedding_falhar(
     vector_store.add_chunks(sample_chunks)
 
     def fail_embeddings(texts, task_type):
-        raise RuntimeError("Falha simulada na geração de embeddings.")
+        raise RuntimeError(
+            "Falha simulada na geração de embeddings."
+        )
 
     monkeypatch.setattr(
         vector_store,
@@ -206,6 +211,7 @@ def test_replace_document_preserva_antigos_se_embedding_falhar(
 
     assert vector_store.collection.count() == 2
 
+
 def test_replace_document_sem_chunks_preserva_antigos(
     vector_store,
     sample_chunks,
@@ -219,6 +225,7 @@ def test_replace_document_sem_chunks_preserva_antigos(
         )
 
     assert vector_store.collection.count() == 2
+
 
 def test_replace_document_rejeita_source_diferente(vector_store):
     chunk = DocumentChunk(
@@ -238,6 +245,7 @@ def test_replace_document_rejeita_source_diferente(vector_store):
         )
 
     assert vector_store.collection.count() == 0
+
 
 def test_replace_document_rejeita_chunks_duplicados(vector_store):
     chunks = [

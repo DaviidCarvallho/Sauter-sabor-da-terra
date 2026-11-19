@@ -1,27 +1,25 @@
-"""Banco vetorial.
+
+"""Armazenamento vetorial dos documentos do Sabor da Terra.
 
 Função:
     Único módulo que conhece o ChromaDB e a geração de embeddings.
 
 Responsabilidades:
-    - Persistir o índice em VECTOR_STORE_DIR
-    - Gerar embeddings (modelo ainda a decidir) e gravar os trechos
-    - Consultar por similaridade
+    - Persistir o índice em VECTOR_STORE_DIR.
+    - Gerar embeddings e gravar os trechos.
+    - Consultar por similaridade.
 
 Não deve:
-    - Vazar detalhes do ChromaDB para outras camadas
+    - Vazar detalhes do ChromaDB para outras camadas.
 
 Relações:
-    Usa:        chromadb, utils.config
-    Usado por:  rag.ingestion, rag.retriever
+    Usa: chromadb, utils.config.
+    Usado por: rag.ingestion, rag.retriever.
 
 Observação:
-    O índice é um artefato derivado: pode ser reconstruído pela ingestão. O GCS guarda os arquivos, não o índice.
-
-Status: esqueleto. Será implementado na Fase 5 (RAG e Agente de Documentos).
+    O índice é um artefato derivado e pode ser reconstruído pela ingestão.
+    O GCS guarda os arquivos, não o índice.
 """
-
-"""Armazenamento vetorial dos documentos do Sabor da Terra."""
 
 import hashlib
 import json
@@ -230,7 +228,11 @@ class VectorStore:
 
             chunk_index = chunk.metadata.get("chunk_index")
 
-            if not isinstance(chunk_index, int) or isinstance(chunk_index, bool) or chunk_index <= 0:
+            if (
+                not isinstance(chunk_index, int)
+                or isinstance(chunk_index, bool)
+                or chunk_index <= 0
+            ):
                 raise ValueError(
                     "chunk_index deve ser um inteiro positivo."
                 )

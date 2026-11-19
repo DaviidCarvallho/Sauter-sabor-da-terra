@@ -360,10 +360,10 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 
 ### Responsabilidades e tarefas
 
-- [ ] Conferir os arquivos CSV/JSON reais e documentar colunas, tipos, identificadores, unidades e formatos de data.
-- [ ] Definir os schemas Pydantic em `models/pedido_model.py`, `produtor_model.py` e `produto_model.py` a partir dos arquivos reais.
-- [ ] Implementar `repositories/storage_repository.py` para parsing compartilhado de CSV/JSON.
-- [ ] Implementar `produtor_repository.py`, `pedido_repository.py`, `financeiro_repository.py`, `produto_repository.py` e `lote_repository.py`.
+- [x] Conferir os arquivos CSV/JSON reais e documentar colunas, tipos, identificadores, unidades e formatos de data.
+- [x] Definir os schemas Pydantic em `models/pedido_model.py`, `produtor_model.py` e `produto_model.py` a partir dos arquivos reais.
+- [x] Implementar `repositories/storage_repository.py` para parsing compartilhado de CSV/JSON.
+- [x] Implementar `produtor_repository.py`, `pedido_repository.py`, `financeiro_repository.py`, `produto_repository.py` e `lote_repository.py`.
 - [ ] Implementar `services/produtor_service.py` para reunir cadastro, pedidos e financeiro de um produtor.
 - [ ] Implementar `services/relatorio_service.py` para calcular vendas do período, pedidos alocados e pendências.
 - [ ] Implementar `services/pedido_service.py` em colaboração com David, especialmente as consultas determinísticas aos dados.
