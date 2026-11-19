@@ -7,10 +7,9 @@
  *   Requisição : { "message": "texto", "session_id": "abc" | null, "user_id": "u-123" }
  *   Resposta   : { "answer": "texto", "session_id": "abc", "status": "success",
  *                  "agents_used": ["pedidos_agent"],
- *                  "sources": [ { "source": "contratos/x.txt", "page": null } ] }
- *   O backend ainda NÃO envia "alerts": os alertas da triagem vêm dentro do texto da resposta.
- *                  (formato aceito pela tela, para quando existir:
- *                   "alerts": [ { "type": "fora_de_safra", "message": "...", "severity": "high" } ])
+ *                  "sources": [ { "source": "contratos/x.txt", "page": null } ],
+ *                  "alerts": [ { "tipo": "fora_de_safra", "severidade": "alta", "mensagem": "...", "produto": "morango" } ] }
+ *   "alerts" vem do código (triagem determinística), só na triagem de pedidos; vazio nas demais respostas.
  *   Erros      : { "detail": "mensagem" } com 422 (corpo inválido), 429 (limite da IA),
  *                503 (IA não configurada) e 502 (falha do assistente).
  *
