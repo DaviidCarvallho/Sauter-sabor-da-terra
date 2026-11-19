@@ -30,7 +30,7 @@ def test_todas_as_ferramentas_geram_declaracao_para_o_adk():
 def test_schema_de_triar_pedido_expoe_itens_tipados():
     schema = FunctionTool(triar_pedido)._get_declaration().parameters_json_schema
     assert "itens" in schema["properties"] and "ItemTriagem" in schema["$defs"]
-    assert schema["required"] == ["itens"]
+    assert "itens" not in schema.get("required", [])  # tolerante a omissão (ver tools.py)
 
 
 def test_tools_nao_acessam_repositorios_nem_arquivos():
@@ -151,3 +151,21 @@ def test_consultar_pedido_codigo_invalido_e_inexistente():
     assert consultar_pedido_recebido("123")["status"] == "erro"
     r = consultar_pedido_recebido("PED-2026-999")
     assert r["status"] == "erro" and "não encontrado" in r["mensagem"]
+
+
+@pytest.mark.parametrize("func", FERRAMENTAS_PEDIDOS, ids=lambda f: f.__name__)
+def test_ferramentas_toleram_argumentos_omitidos_pelo_modelo(func):
+    """Regressão (teste real com o Gemini): resolver_prazo_pedido() chamado sem 'expressao' gerava
+    TypeError e derrubava a conversa. Toda ferramenta deve responder sem exceção quando o modelo
+    omite argumentos."""
+    import inspect
+
+    assert all(p.default is not inspect.Parameter.empty for p in inspect.signature(func).parameters.values())
+    resultado = func()
+    assert resultado["status"] in {"sucesso", "erro"}
+
+
+@pytest.mark.parametrize("func", [resolver_prazo_pedido, triar_pedido, consultar_pedido_recebido])
+def test_argumento_ausente_devolve_erro_orientando_o_modelo(func):
+    r = func()
+    assert r["status"] == "erro" and r["mensagem"]

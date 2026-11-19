@@ -19,8 +19,10 @@ Relações:
 
 Observações:
     A docstring de cada ferramenta é o que o modelo lê para decidir quando usá-la.
-    Erros esperados (entrada inválida, dado inexistente) viram {"status": "erro"}; falhas
-    inesperadas propagam para o mecanismo de retentativa e telemetria do ADK 2.x.
+    Erros esperados (entrada inválida, argumento ausente, dado inexistente) viram {"status": "erro"};
+    falhas inesperadas propagam para o mecanismo de retentativa e telemetria do ADK 2.x.
+    Todos os parâmetros têm valor padrão: no ADK 2.x um argumento obrigatório omitido pelo modelo
+    gera TypeError e derruba a conversa; assim a ferramenta devolve erro e o modelo se corrige.
 """
 
 from __future__ import annotations
@@ -98,7 +100,7 @@ def obter_data_atual() -> dict[str, Any]:
     return {"status": "sucesso", "data": hoje.isoformat(), "dia_semana": NOMES_DIAS_PT[hoje.weekday()]}
 
 
-def resolver_prazo_pedido(expressao: str, data_referencia: str = "") -> dict[str, Any]:
+def resolver_prazo_pedido(expressao: str = "", data_referencia: str = "") -> dict[str, Any]:
     """Converte um prazo dito pelo comprador em uma data real.
 
     Use para qualquer prazo ("hoje", "amanhã", "pra sexta", "04/nov", "semana que vem").
@@ -113,6 +115,8 @@ def resolver_prazo_pedido(expressao: str, data_referencia: str = "") -> dict[str
         Dicionário com "status", "resultado" ("resolvido", "ambiguo" ou "nao_reconhecido"),
         "data", "dia_semana" e "explicacao".
     """
+    if not (expressao or "").strip():
+        return _erro("Informe 'expressao' com o prazo como o comprador escreveu (ex.: 'pra sexta').")
     try:
         ref = _parse_data(data_referencia)
     except ValueError:
@@ -129,7 +133,7 @@ def resolver_prazo_pedido(expressao: str, data_referencia: str = "") -> dict[str
 
 
 def triar_pedido(
-    itens: list[ItemTriagem],
+    itens: list[ItemTriagem] | None = None,
     comprador: str = "",
     prazo: str = "",
     tipo: str = "",
@@ -156,7 +160,7 @@ def triar_pedido(
         tipo, urgência e valor estimado) ou "mensagem" em caso de erro.
     """
     if not itens:
-        return _erro("Informe ao menos um item para a triagem.")
+        return _erro("Informe 'itens' com ao menos um item (produto, quantidade, unidade) para a triagem.")
     try:
         ref = _parse_data(data_referencia)
         entradas = [
@@ -193,7 +197,7 @@ def triar_pedido(
     return resultado
 
 
-def consultar_pedido_recebido(pedido_id: str) -> dict[str, Any]:
+def consultar_pedido_recebido(pedido_id: str = "") -> dict[str, Any]:
     """Busca um pedido já recebido pela cooperativa (ex.: "PED-2026-005") para triagem.
 
     Use quando o usuário citar o código de um pedido. Devolve o texto original e a data de
