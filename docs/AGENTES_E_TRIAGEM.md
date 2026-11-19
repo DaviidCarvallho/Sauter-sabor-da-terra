@@ -85,7 +85,7 @@ Não havia implementação de `chat_model`, `chat_service` e `chat_controller` (
 - Resposta: `answer`, `session_id`, `agents_used`, `sources` (`[]` até o Agente de Documentos preencher), `status`.
 - **Divergência a decidir:** o documento de contratos usa `message` na resposta e `user` na requisição como exemplo ilustrativo; o plano de tarefas, o frontend e os testes de QA usam `answer` e `user_id`. Adotamos estes últimos (o frontend lê `answer`, `reply`, `response` e `message`).
 - Sessão: em memória, isolada por usuário. `session_id` desconhecido ou de outro usuário gera sessão nova, devolvida na resposta (o contexto anterior não é reaproveitado).
-- Erros: 422 (corpo inválido), 503 (IA não configurada), 502 (falha do assistente). Corpo `{"detail": "..."}`, sem detalhes internos.
+- Erros: 422 (corpo inválido), 503 (IA não configurada **ou chave recusada pela API**), 502 (falha do assistente). Corpo `{"detail": "..."}`, sem detalhes internos.
 - Logs: sessão (prefixo), agentes acionados e tipo da exceção; nunca o conteúdo das mensagens.
 - Imports do ADK são tardios: o servidor sobe (health, frontend) mesmo sem o extra `ai`.
 

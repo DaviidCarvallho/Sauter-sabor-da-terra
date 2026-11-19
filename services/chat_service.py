@@ -53,6 +53,17 @@ class ChatFalhaError(RuntimeError):
     """Falha ao executar o agente (modelo indisponível, erro inesperado, resposta vazia)."""
 
 
+def _credencial_invalida(exc: Exception) -> bool:
+    """True quando a API do Gemini recusou a chave (400 API_KEY_INVALID, 401 ou 403)."""
+    try:
+        from google.genai import errors
+    except ImportError:  # pragma: no cover
+        return False
+    if not isinstance(exc, errors.ClientError):
+        return False
+    return exc.code in (401, 403) or "API_KEY_INVALID" in str(exc)
+
+
 class ChatService:
     def __init__(
         self,
@@ -119,6 +130,10 @@ class ChatService:
                 if evento.is_final_response() and evento.content and evento.content.parts:
                     resposta = "".join(p.text or "" for p in evento.content.parts).strip()
         except Exception as exc:  # fronteira do serviço: registra o tipo (sem conteúdo) e tipifica
+            if _credencial_invalida(exc):
+                # Erro de configuração do servidor, não falha transitória: vira 503 na API.
+                logger.error("Credencial de IA recusada pela API (chave inválida ou sem permissão).")
+                raise ChatIndisponivelError("Credencial de IA inválida.") from exc
             logger.error("Falha ao executar o agente (%s)", type(exc).__name__)
             raise ChatFalhaError("Falha ao executar o assistente.") from exc
 

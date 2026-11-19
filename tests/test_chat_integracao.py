@@ -121,3 +121,20 @@ def test_logs_nao_contem_o_texto_da_mensagem(caplog):
 
 def test_chat_documentado_no_openapi():
     assert "post" in TestClient(app).get("/openapi.json").json()["paths"]["/api/chat"]
+
+
+class _LlmChaveInvalida(ScriptedLlm):
+    async def generate_content_async(self, llm_request, stream=False):
+        from google.genai import errors
+
+        raise errors.ClientError(
+            400, {"error": {"code": 400, "message": "API key not valid.", "status": "INVALID_ARGUMENT",
+                            "details": [{"reason": "API_KEY_INVALID"}]}})
+        yield  # pragma: no cover
+
+
+def test_chave_de_ia_invalida_retorna_503_e_nao_502():
+    servico = ChatService(agente=construir_root_agent(_LlmChaveInvalida()))
+    r = _cliente(servico).post("/api/chat", json={"message": "oi"})
+    assert r.status_code == 503
+    assert "API key" not in r.text and "API_KEY" not in r.text
