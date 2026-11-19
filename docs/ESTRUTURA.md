@@ -59,6 +59,7 @@ sabor-da-terra/
 │   └── fichas_tecnicas/                      [OK] Fichas técnicas
 ├── docs/                                 [OK] Documentação
 │   ├── ARQUITETURA_E_DECISOES_TECNICAS.md    [OK] Arquitetura, diagramas e decisões
+│   ├── ARQUITETURA_GOOGLE_CLOUD_E_MIGRACAO.md [OK] Proposta de nuvem (Cloud Run e Cloud Storage); não implementada
 │   ├── AGENTES_E_TRIAGEM.md                  [OK] Agentes, ferramentas e triagem em detalhe
 │   ├── CONTRATOS_ARQUITETURAIS.md            [OK] Contratos entre camadas (Murilo)
 │   ├── CONEXAO_BACKEND.md                    [OK] Conexão frontend ↔ backend (Raquel)

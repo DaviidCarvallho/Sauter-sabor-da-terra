@@ -56,7 +56,7 @@ flowchart LR
     RAG --> STO
 ```
 
-Camadas: `api` → `chat_service` → `agents` → `tools` → `services` → `repositories` / `rag` → `storage`. Detalhes, diagramas e decisões técnicas: [`docs/ARQUITETURA_E_DECISOES_TECNICAS.md`](docs/ARQUITETURA_E_DECISOES_TECNICAS.md). Estrutura de arquivos: [`docs/ESTRUTURA.md`](docs/ESTRUTURA.md).
+Camadas: `api` → `chat_service` → `agents` → `tools` → `services` → `repositories` / `rag` → `storage`. Detalhes, diagramas e decisões técnicas: [`docs/ARQUITETURA_E_DECISOES_TECNICAS.md`](docs/ARQUITETURA_E_DECISOES_TECNICAS.md). Estrutura de arquivos: [`docs/ESTRUTURA.md`](docs/ESTRUTURA.md). Como a aplicação funcionaria no Google Cloud (proposta, não implementada): [`docs/ARQUITETURA_GOOGLE_CLOUD_E_MIGRACAO.md`](docs/ARQUITETURA_GOOGLE_CLOUD_E_MIGRACAO.md).
 
 ## 5. Estrutura de diretórios
 
@@ -196,6 +196,7 @@ Plano de trabalho por integrante: [`docs/PLANO_DE_TAREFAS.md`](docs/PLANO_DE_TAR
 | Documento | Conteúdo |
 |---|---|
 | [`docs/ARQUITETURA_E_DECISOES_TECNICAS.md`](docs/ARQUITETURA_E_DECISOES_TECNICAS.md) | Arquitetura, diagramas e decisões |
+| [`docs/ARQUITETURA_GOOGLE_CLOUD_E_MIGRACAO.md`](docs/ARQUITETURA_GOOGLE_CLOUD_E_MIGRACAO.md) | Proposta de migração para o Google Cloud (Cloud Run e Cloud Storage); nada implementado |
 | [`docs/ESTRUTURA.md`](docs/ESTRUTURA.md) | Pastas, arquivos e fluxo |
 | [`docs/PLANO_DE_TAREFAS.md`](docs/PLANO_DE_TAREFAS.md) | Tarefas por integrante |
 | [`docs/AGENTES_E_TRIAGEM.md`](docs/AGENTES_E_TRIAGEM.md) | Agentes, ferramentas e triagem |
