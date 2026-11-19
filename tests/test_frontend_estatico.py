@@ -93,3 +93,19 @@ def test_css_visual_fundo_branco_e_verde():
     assert "--bg: #ffffff" in css and "--surface: #ffffff" in css   # fundo branco
     assert "--leaf: #2d6a3e" in css and "--accent: #2f8049" in css  # restante em verde
     assert "guava" not in css.lower()                               # sem o antigo acento rosa
+
+
+def test_decoracao_de_folhas_e_apenas_visual_e_some_em_tela_estreita():
+    css = ler("css/style.css")
+    svg = (STATIC / "img" / "folhas.svg").read_text(encoding="utf-8")
+    assert svg.lstrip().startswith("<svg") and 'aria-hidden="true"' in svg
+    assert 'url("/img/folhas.svg")' in css
+    assert "pointer-events: none" in css  # não bloqueia cliques nem seleção
+    assert "z-index: -1" in css           # fica atrás do conteúdo
+    assert "@media (max-width: 64rem)" in css and "display: none" in css.split("@media (max-width: 64rem)")[1][:120]
+
+
+def test_boas_vindas_centralizadas_com_marca_de_folha_decorativa():
+    css, html = ler("css/style.css"), ler("index.html")
+    assert "text-align: center" in css.split(".welcome {")[1].split("}")[0]
+    assert 'class="welcome__leaf" aria-hidden="true"' in html  # ícone decorativo, fora do leitor de tela
