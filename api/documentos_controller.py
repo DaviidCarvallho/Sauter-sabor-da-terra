@@ -16,5 +16,6 @@ Relações:
 Observação:
     Só será ativado se a interface precisar. O fluxo principal passa por /api/chat.
 
-Status: esqueleto. Será implementado na Fase 5 (RAG e Agente de Documentos).
+Status: esqueleto, opcional. A consulta documental já funciona pelo chat (Agente de Documentos);
+esta rota só será criada se a interface precisar de consulta direta ou reindexação.
 """
