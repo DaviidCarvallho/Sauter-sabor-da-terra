@@ -17,5 +17,6 @@ Relações:
 Observação:
     Só será ativado se a interface precisar. O fluxo principal passa por /api/chat.
 
-Status: esqueleto. Será implementado na Fase 4 (orquestrador, Agente de Pedidos e API de chat).
+Status: esqueleto, opcional. A triagem já funciona pelo chat (Agente de Pedidos);
+esta rota só será criada se a interface precisar de triagem direta.
 """

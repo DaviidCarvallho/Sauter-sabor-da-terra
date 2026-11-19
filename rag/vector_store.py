@@ -1,27 +1,25 @@
-"""Banco vetorial.
+
+"""Armazenamento vetorial dos documentos do Sabor da Terra.
 
 Função:
     Único módulo que conhece o ChromaDB e a geração de embeddings.
 
 Responsabilidades:
-    - Persistir o índice em VECTOR_STORE_DIR
-    - Gerar embeddings (modelo ainda a decidir) e gravar os trechos
-    - Consultar por similaridade
+    - Persistir o índice em VECTOR_STORE_DIR.
+    - Gerar embeddings e gravar os trechos.
+    - Consultar por similaridade.
 
 Não deve:
-    - Vazar detalhes do ChromaDB para outras camadas
+    - Vazar detalhes do ChromaDB para outras camadas.
 
 Relações:
-    Usa:        chromadb, utils.config
-    Usado por:  rag.ingestion, rag.retriever
+    Usa: chromadb, utils.config.
+    Usado por: rag.ingestion, rag.retriever.
 
 Observação:
-    O índice é um artefato derivado: pode ser reconstruído pela ingestão. O GCS guarda os arquivos, não o índice.
-
-Status: esqueleto. Será implementado na Fase 5 (RAG e Agente de Documentos).
+    O índice é um artefato derivado e pode ser reconstruído pela ingestão.
+    O GCS guarda os arquivos, não o índice.
 """
-
-"""Armazenamento vetorial dos documentos do Sabor da Terra."""
 
 import hashlib
 import json
@@ -203,11 +201,101 @@ class VectorStore:
             metadatas=metadatas,
         )
 
+    def replace_document(
+        self,
+        source: str,
+        chunks: list[DocumentChunk],
+    ) -> None:
+        """Substitui os chunks de um documento sem apagar os antigos antecipadamente."""
+
+        if not source.strip():
+            raise ValueError(
+                "A origem do documento não pode estar vazia."
+            )
+
+        chunk_ids = set()
+
+        for chunk in chunks:
+            if not chunk.text.strip():
+                raise ValueError(
+                    "Não é possível armazenar um chunk vazio."
+                )
+
+            if chunk.metadata.get("source") != source:
+                raise ValueError(
+                    "Todos os chunks devem pertencer ao documento informado."
+                )
+
+            chunk_index = chunk.metadata.get("chunk_index")
+
+            if (
+                not isinstance(chunk_index, int)
+                or isinstance(chunk_index, bool)
+                or chunk_index <= 0
+            ):
+                raise ValueError(
+                    "chunk_index deve ser um inteiro positivo."
+                )
+
+            chunk_id = self._generate_chunk_id(chunk)
+
+            if chunk_id in chunk_ids:
+                raise ValueError(
+                    "Existem chunks com identificadores duplicados."
+                )
+
+            chunk_ids.add(chunk_id)
+
+        if not chunks:
+            raise ValueError(
+                "Não é possível substituir um documento sem chunks."
+            )
+
+        texts = [chunk.text for chunk in chunks]
+
+        embeddings = self._generate_embeddings(
+            texts,
+            task_type="RETRIEVAL_DOCUMENT",
+        )
+
+        ids = [
+            self._generate_chunk_id(chunk)
+            for chunk in chunks
+        ]
+
+        metadatas = [
+            self._prepare_metadata(chunk.metadata)
+            for chunk in chunks
+        ]
+
+        new_ids = set(ids)
+
+        existing = self.collection.get(
+            where={"source": source},
+            include=[],
+        )
+
+        obsolete_ids = [
+            chunk_id
+            for chunk_id in existing["ids"]
+            if chunk_id not in new_ids
+        ]
+
+        self.collection.upsert(
+            ids=ids,
+            documents=texts,
+            embeddings=embeddings,
+            metadatas=metadatas,
+        )
+
+        if obsolete_ids:
+            self.collection.delete(ids=obsolete_ids)
+
     def search(
         self,
         query: str,
         n_results: int = 5,
-    ) -> list[DocumentChunk]:
+    ) -> list[tuple[str, DocumentChunk, float]]:
         """Busca os chunks mais relevantes para uma consulta."""
 
         if not query.strip():
@@ -233,20 +321,28 @@ class VectorStore:
         results = self.collection.query(
             query_embeddings=query_embedding,
             n_results=min(n_results, collection_count),
-            include=["documents", "metadatas"],
+            include=["documents", "metadatas", "distances"],
         )
 
         chunks = []
 
         documents = results["documents"][0]
         metadatas = results["metadatas"][0]
-        for text, metadata in zip(documents, metadatas):
-            chunks.append(
-                DocumentChunk(
-                    text=text,
-                    metadata=metadata,
-                )
+        distances = results["distances"][0]
+        ids = results["ids"][0]
+
+        for chunk_id, text, metadata, distance in zip(
+            ids,
+            documents,
+            metadatas,
+            distances,
+        ):
+            chunk = DocumentChunk(
+                text=text,
+                metadata=metadata,
             )
+
+            chunks.append((chunk_id, chunk, distance))
 
         return chunks
 

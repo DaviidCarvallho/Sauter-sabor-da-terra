@@ -6,7 +6,7 @@ Função:
 Responsabilidades:
     - Validar o corpo da requisição (ChatRequest)
     - Delegar o processamento ao chat_service
-    - Devolver ChatResponse e traduzir falhas em respostas HTTP
+    - Devolver ChatResponse e traduzir falhas em respostas HTTP (sem detalhes internos)
 
 Não deve:
     - Instanciar ou conhecer agentes do ADK
@@ -16,5 +16,40 @@ Relações:
     Usa:        models.chat_model, services.chat_service
     Usado por:  main.py (registro do router)
 
-Status: esqueleto. Será implementado na Fase 4 (orquestrador, Agente de Pedidos e API de chat).
+Erros: 422 (corpo inválido, pelo FastAPI), 503 (IA não configurada ou chave recusada),
+429 (limite de requisições da IA; tentar de novo) e 502 (falha do assistente).
+Formato: {"detail": "mensagem"}, que o frontend já interpreta.
 """
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from models.chat_model import ChatRequest, ChatResponse
+from services.chat_service import (
+    ChatFalhaError,
+    ChatIndisponivelError,
+    ChatLimiteError,
+    ChatService,
+    get_chat_service,
+)
+
+router = APIRouter(prefix="/api", tags=["chat"])
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(req: ChatRequest, service: ChatService = Depends(get_chat_service)) -> ChatResponse:
+    """Envia uma mensagem ao assistente e devolve a resposta, a sessão e os agentes acionados."""
+    try:
+        return await service.responder(req)
+    except ChatIndisponivelError as exc:
+        raise HTTPException(
+            status_code=503, detail="O assistente de IA não está configurado no servidor."
+        ) from exc
+    except ChatLimiteError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail="Muitas solicitações à IA em pouco tempo. Aguarde alguns segundos e tente de novo.",
+        ) from exc
+    except ChatFalhaError as exc:
+        raise HTTPException(
+            status_code=502, detail="Não foi possível obter uma resposta agora. Tente novamente."
+        ) from exc

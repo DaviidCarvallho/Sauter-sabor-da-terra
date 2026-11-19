@@ -1,21 +1,27 @@
 /* Sabor da Terra – chat da cooperativa
  *
- * CONTRATO ASSUMIDO DE POST /api/chat (ainda é esqueleto no backend; confirmar com
- * Murilo e David). Segundo docs/ESTRUTURA.md, models/chat_model.py terá usuário,
- * sessão, mensagem e agentes acionados. Os NOMES dos campos abaixo são suposição:
+ * Etapa 3 (original): checkHealth() consulta /api/health e mostra a versão do servidor.
+ * Etapa 7 (esta): chat conectado a POST /api/chat.
+ *
+ * CONTRATO DE POST /api/chat (implementado em models/chat_model.py e api/chat_controller.py):
  *   Requisição : { "message": "texto", "session_id": "abc" | null, "user_id": "u-123" }
- *   Resposta   : { "reply": "texto", "session_id": "abc",
- *                  "agents": ["pedidos_agent"],
- *                  "sources": [ { "source": "laudo.pdf", "page": 3 } ],
- *                  "alerts":  [ { "type": "fora_de_safra", "message": "...", "severity": "high" } ] }
- *   Erro       : { "detail": "mensagem" }  (padrão do FastAPI) ou { "error": { "message": "..." } }
+ *   Resposta   : { "answer": "texto", "session_id": "abc", "status": "success",
+ *                  "agents_used": ["pedidos_agent"],
+ *                  "sources": [ { "source": "contratos/x.txt", "page": null } ],
+ *                  "alerts": [ { "tipo": "fora_de_safra", "severidade": "alta", "mensagem": "...", "produto": "morango" } ] }
+ *   "alerts" vem do código (triagem determinística), só na triagem de pedidos; vazio nas demais respostas.
+ *   Erros      : { "detail": "mensagem" } com 422 (corpo inválido), 429 (limite da IA),
+ *                503 (IA não configurada) e 502 (falha do assistente).
  *
  * O normalizador aceita nomes alternativos de campo (ex.: response, answer,
  * agentes, agentes_acionados, file, filename, pagina), então pequenas diferenças
  * no backend não quebram a tela. Se o contrato final for diferente, basta mexer em
- * CONFIG, em enviarMensagem() (corpo da requisição) e em normalizarResposta().
+ * CONFIG, no corpo da requisição (sendMessage) e em normalizarResposta().
+ *
+ * O texto do assistente aceita Markdown simples (títulos, listas, tabelas, negrito,
+ * itálico, código e links http/https). Tudo entra na página por textContent.
  */
-(function (raiz) {
+(function (root) {
   "use strict";
 
   var CONFIG = {
@@ -23,11 +29,15 @@
     endpointSaude: "/api/health",
     chaveSessao: "sabor_session_id",
     chaveUsuario: "sabor_user_id",
+    chaveHistorico: "sabor_historico",
+    maxMensagensGuardadas: 60,
     tempoLimiteMs: 60000, // agentes com RAG podem demorar
-    limiteCaracteres: 4000
+    avisoLentoMs: 10000,
+    limiteCaracteres: 4000,
+    enviarUserId: true // ponha false se o schema Pydantic do backend não aceitar user_id
   };
 
-  /* ====================== lógica pura (testável) ====================== */
+  /* ====================== lógica pura (testável em Node) ====================== */
 
   function primeiroTexto() {
     for (var i = 0; i < arguments.length; i++) {
@@ -37,26 +47,19 @@
     return "";
   }
 
+  /** "laudo.pdf" -> "PDF"; sem extensão conhecida -> "DOC". */
+  function tipoArquivo(nome) {
+    var m = /\.([a-z0-9]{2,5})$/i.exec(String(nome || ""));
+    return m ? m[1].toUpperCase() : "DOC";
+  }
+
   function normalizarFonte(f) {
-    if (typeof f === "string") return { arquivo: f, pagina: null };
+    if (typeof f === "string") return { arquivo: f, pagina: null, tipo: tipoArquivo(f) };
     if (!f || typeof f !== "object") return null;
     var arquivo = primeiroTexto(f.source, f.file, f.filename, f.arquivo, f.document, f.documento, f.name, f.nome, f.title);
     if (!arquivo) return null;
     var pag = f.page != null ? f.page : (f.pagina != null ? f.pagina : (f.page_number != null ? f.page_number : null));
-    return { arquivo: arquivo, pagina: pag === "" ? null : pag };
-  }
-
-  function normalizarAlerta(a) {
-    if (typeof a === "string") return { rotulo: "Atenção", texto: a, nivel: "medio" };
-    if (!a || typeof a !== "object") return null;
-    var texto = primeiroTexto(a.message, a.mensagem, a.text, a.texto, a.description, a.descricao);
-    var tipo = primeiroTexto(a.type, a.tipo, a.code, a.codigo);
-    if (!texto && !tipo) return null;
-    var sev = String(a.severity || a.severidade || a.level || a.nivel || "").toLowerCase();
-    var nivel = "medio";
-    if (/high|alta|alto|critical|critic|error|erro/.test(sev)) nivel = "alto";
-    else if (/info|low|baixa|baixo/.test(sev)) nivel = "info";
-    return { rotulo: rotuloDoTipo(tipo), texto: texto || rotuloDoTipo(tipo), nivel: nivel };
+    return { arquivo: arquivo, pagina: pag === "" ? null : pag, tipo: tipoArquivo(arquivo) };
   }
 
   var ROTULOS = {
@@ -72,6 +75,19 @@
     if (ROTULOS[tipo]) return ROTULOS[tipo];
     var t = tipo.replace(/[_-]+/g, " ").trim();
     return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+
+  function normalizarAlerta(a) {
+    if (typeof a === "string") return { rotulo: "Atenção", texto: a, nivel: "medio" };
+    if (!a || typeof a !== "object") return null;
+    var texto = primeiroTexto(a.message, a.mensagem, a.text, a.texto, a.description, a.descricao);
+    var tipo = primeiroTexto(a.type, a.tipo, a.code, a.codigo);
+    if (!texto && !tipo) return null;
+    var sev = String(a.severity || a.severidade || a.level || a.nivel || "").toLowerCase();
+    var nivel = "medio";
+    if (/high|alta|alto|critical|critic|error|erro/.test(sev)) nivel = "alto";
+    else if (/info|low|baixa|baixo/.test(sev)) nivel = "info";
+    return { rotulo: rotuloDoTipo(tipo), texto: texto || rotuloDoTipo(tipo), nivel: nivel };
   }
 
   /** "pedidos_agent" -> "Pedidos"; o orquestrador (root_agent) não precisa aparecer. */
@@ -97,7 +113,7 @@
 
   function normalizarResposta(dados) {
     if (!dados || typeof dados !== "object") return { vazia: true, texto: "", fontes: [], alertas: [], agentes: [], sessionId: null };
-    var texto = primeiroTexto(dados.reply, dados.response, dados.answer, dados.message, dados.resposta, dados.text);
+    var texto = primeiroTexto(dados.reply, dados.response, dados.answer, dados.message, dados.resposta, dados.texto, dados.text);
     var fontes = (Array.isArray(dados.sources) ? dados.sources : (Array.isArray(dados.fontes) ? dados.fontes : []))
       .map(normalizarFonte).filter(Boolean);
     var alertas = (Array.isArray(dados.alerts) ? dados.alerts : (Array.isArray(dados.alertas) ? dados.alertas : []))
@@ -134,16 +150,57 @@
     return { mensagem: doServidor || "Não foi possível concluir o envio.", podeTentarDeNovo: true };
   }
 
-  /** Quebra texto do assistente em blocos simples: parágrafos, listas e **negrito**. */
+  /* ---- Markdown simples ---- */
+
+  function ehSeparadorTabela(l) {
+    return l.indexOf("|") >= 0 && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
+  }
+
+  function celulasDaLinha(l) {
+    var t = l.trim().replace(/^\|/, "").replace(/\|$/, "");
+    return t.split("|").map(function (c) { return c.trim(); });
+  }
+
+  /** Valores como "40 kg", "R$ 4.280,00", "12%", "7": alinhados à direita nas tabelas. */
+  function ehNumerico(txt) {
+    return /^[-+]?\s*(R\$\s*)?\d[\d.,\s]*(\s*(kg|g|l|ml|un|cx|caixas?|%))?$/i.test(String(txt).trim());
+  }
+
+  /** Quebra o texto do assistente em blocos: p, h, ul, ol, table. */
   function parseTextoSimples(texto) {
     var linhas = String(texto).replace(/\r\n/g, "\n").split("\n");
     var blocos = [];
     var atual = null;
+    var i = 0;
     function fechar() { if (atual) { blocos.push(atual); atual = null; } }
-    linhas.forEach(function (linha) {
+
+    while (i < linhas.length) {
+      var linha = linhas[i];
+
+      if (linha.indexOf("|") >= 0 && i + 1 < linhas.length && ehSeparadorTabela(linhas[i + 1])) {
+        fechar();
+        var cab = celulasDaLinha(linha);
+        var alinh = celulasDaLinha(linhas[i + 1]).map(function (c) {
+          var e = /^:/.test(c), d = /:$/.test(c);
+          return e && d ? "center" : d ? "right" : e ? "left" : "";
+        });
+        var corpo = [];
+        i += 2;
+        while (i < linhas.length && linhas[i].trim() !== "" && linhas[i].indexOf("|") >= 0) {
+          corpo.push(celulasDaLinha(linhas[i]));
+          i++;
+        }
+        blocos.push({ tipo: "table", cab: cab, alinh: alinh, linhas: corpo });
+        continue;
+      }
+
+      var h = /^\s{0,3}(#{1,4})\s+(.*?)\s*#*\s*$/.exec(linha);
       var ul = /^\s*[-*•]\s+(.*)$/.exec(linha);
       var ol = /^\s*\d+[.)]\s+(.*)$/.exec(linha);
-      if (ul) {
+      if (h) {
+        fechar();
+        blocos.push({ tipo: "h", nivel: Math.min(h[1].length + 2, 5), texto: h[2] });
+      } else if (ul) {
         if (!atual || atual.tipo !== "ul") { fechar(); atual = { tipo: "ul", itens: [] }; }
         atual.itens.push(ul[1]);
       } else if (ol) {
@@ -155,7 +212,8 @@
         if (!atual || atual.tipo !== "p") { fechar(); atual = { tipo: "p", linhas: [] }; }
         atual.linhas.push(linha);
       }
-    });
+      i++;
+    }
     fechar();
     return blocos;
   }
@@ -173,16 +231,47 @@
     return partes;
   }
 
+  /** Negrito, itálico, `código` e [texto](https://...). Só links http/https viram link. */
+  function partesInline(texto) {
+    var partes = [];
+    var re = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|\*[^*\s][^*]*\*)/g;
+    var ultimo = 0, m;
+    while ((m = re.exec(texto)) !== null) {
+      if (m.index > ultimo) partes.push({ tipo: "texto", texto: texto.slice(ultimo, m.index) });
+      var t = m[0];
+      if (t.indexOf("**") === 0) partes.push({ tipo: "negrito", texto: t.slice(2, -2) });
+      else if (t.charAt(0) === "`") partes.push({ tipo: "codigo", texto: t.slice(1, -1) });
+      else if (t.charAt(0) === "[") {
+        var mm = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/.exec(t);
+        partes.push({ tipo: "link", texto: mm[1], href: mm[2] });
+      } else partes.push({ tipo: "italico", texto: t.slice(1, -1) });
+      ultimo = m.index + t.length;
+    }
+    if (ultimo < texto.length) partes.push({ tipo: "texto", texto: texto.slice(ultimo) });
+    return partes;
+  }
+
+  function formatarHora(ts) {
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return "";
+    function p(n) { return (n < 10 ? "0" : "") + n; }
+    return p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
   var logica = {
     CONFIG: CONFIG,
     normalizarResposta: normalizarResposta,
     normalizarFonte: normalizarFonte,
     normalizarAlerta: normalizarAlerta,
     rotuloAgente: rotuloAgente,
+    tipoArquivo: tipoArquivo,
     extrairMensagemDeErro: extrairMensagemDeErro,
     descreverErro: descreverErro,
     parseTextoSimples: parseTextoSimples,
-    partesNegrito: partesNegrito
+    partesNegrito: partesNegrito,
+    partesInline: partesInline,
+    ehNumerico: ehNumerico,
+    formatarHora: formatarHora
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = logica;
@@ -190,36 +279,67 @@
 
   /* ====================== interface (navegador) ====================== */
 
-  var el = {
-    transcricao: document.getElementById("transcricao"),
-    vazio: document.getElementById("vazio"),
-    form: document.getElementById("formulario"),
-    campo: document.getElementById("mensagem"),
-    enviar: document.getElementById("enviar"),
-    contador: document.getElementById("contador"),
-    faixaErro: document.getElementById("faixa-erro"),
-    faixaErroTexto: document.getElementById("faixa-erro-texto"),
-    tentar: document.getElementById("tentar-novamente"),
-    fecharErro: document.getElementById("fechar-erro"),
-    novaConversa: document.getElementById("nova-conversa"),
-    status: document.getElementById("status-servidor"),
-    statusTexto: document.getElementById("status-texto")
+  var statusEl = document.getElementById("status");
+  var statusText = document.getElementById("status-text");
+  var messagesEl = document.getElementById("messages");
+  var composerEl = document.getElementById("composer");
+  var inputEl = document.getElementById("input");
+  var sendEl = document.getElementById("send");
+  var cancelEl = document.getElementById("cancel");
+  var countEl = document.getElementById("count");
+  var jumpEl = document.getElementById("jump");
+  var noticeEl = document.getElementById("notice");
+  var noticeText = document.getElementById("notice-text");
+  var retryEl = document.getElementById("retry");
+  var dismissEl = document.getElementById("dismiss");
+  var newChatEl = document.getElementById("new-chat");
+  var welcomeEl = document.getElementById("welcome");
+  var welcomeModelo = welcomeEl ? welcomeEl.cloneNode(true) : null;
+
+  var estado = {
+    sessionId: null, userId: null, enviando: false, ultimaMensagem: "",
+    digitandoEl: null, controle: null, cancelado: false, timerLento: null, historico: []
   };
 
-  var estado = { sessionId: null, enviando: false, ultimaMensagem: "", digitandoEl: null };
-
-  /* ---- sessão ---- */
-  function lerSessao() {
-    try { return window.sessionStorage.getItem(CONFIG.chaveSessao); } catch (e) { return null; }
+  /* ---- estado do servidor (mantido da etapa 3) ---- */
+  async function checkHealth() {
+    try {
+      var response = await fetch(CONFIG.endpointSaude);
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var data = await response.json();
+      statusEl.dataset.state = "ok";
+      statusText.textContent = data && data.version ? "Servidor online · v" + data.version : "Servidor online";
+    } catch (error) {
+      statusEl.dataset.state = "error";
+      statusText.textContent = "Servidor indisponível";
+      console.error("Falha ao consultar /api/health:", error);
+    }
   }
+
+  /* ---- armazenamento (sempre com try/catch: pode estar bloqueado) ---- */
+  function lerSessao() { try { return window.sessionStorage.getItem(CONFIG.chaveSessao); } catch (e) { return null; } }
   function gravarSessao(id) {
     try {
       if (id) window.sessionStorage.setItem(CONFIG.chaveSessao, id);
       else window.sessionStorage.removeItem(CONFIG.chaveSessao);
-    } catch (e) { /* armazenamento indisponível: a sessão vive só em memória */ }
+    } catch (e) { /* a sessão vive só em memória */ }
   }
-  estado.sessionId = lerSessao();
-
+  function lerHistorico() {
+    try {
+      var h = JSON.parse(window.sessionStorage.getItem(CONFIG.chaveHistorico) || "[]");
+      return Array.isArray(h) ? h : [];
+    } catch (e) { return []; }
+  }
+  function gravarHistorico() {
+    try {
+      var h = estado.historico.slice(-CONFIG.maxMensagensGuardadas);
+      window.sessionStorage.setItem(CONFIG.chaveHistorico, JSON.stringify(h));
+    } catch (e) { /* sem espaço ou bloqueado: a conversa só não sobrevive ao recarregar */ }
+  }
+  function limparHistorico() {
+    estado.historico = [];
+    try { window.sessionStorage.removeItem(CONFIG.chaveHistorico); } catch (e) { /* ignora */ }
+  }
   /* Sem login no protótipo: cada navegador recebe um id anônimo estável (o backend mantém sessão por usuário). */
   function obterUsuario() {
     var id = null;
@@ -231,9 +351,30 @@
     try { window.localStorage.setItem(CONFIG.chaveUsuario, id); } catch (e) { /* vale só nesta página */ }
     return id;
   }
+  estado.sessionId = lerSessao();
   estado.userId = obterUsuario();
 
-  /* ---- DOM helpers (sempre textContent: nada de innerHTML com texto do servidor) ---- */
+  /* ---- DOM helpers (sempre textContent: nada de HTML vindo do servidor) ---- */
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var ICONES = {
+    alerta: ["M12 4l9 16H3z", "M12 10v4", "M12 17.2v.01"],
+    info: ["M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M12 11v5", "M12 8v.01"],
+    copiar: ["M11 9h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z", "M5 15V7a2 2 0 0 1 2-2h8"],
+    ok: ["M5 12.5l4.5 4.5L19 7"]
+  };
+
+  function icone(nome) {
+    var svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    ICONES[nome].forEach(function (d) {
+      var p = document.createElementNS(SVG_NS, "path");
+      p.setAttribute("d", d);
+      svg.appendChild(p);
+    });
+    return svg;
+  }
+
   function criar(tag, classe, texto) {
     var n = document.createElement(tag);
     if (classe) n.className = classe;
@@ -242,8 +383,17 @@
   }
 
   function preencherInline(pai, texto) {
-    partesNegrito(texto).forEach(function (p) {
-      pai.appendChild(p.negrito ? criar("strong", null, p.texto) : document.createTextNode(p.texto));
+    partesInline(texto).forEach(function (p) {
+      if (p.tipo === "negrito") pai.appendChild(criar("strong", null, p.texto));
+      else if (p.tipo === "italico") pai.appendChild(criar("em", null, p.texto));
+      else if (p.tipo === "codigo") pai.appendChild(criar("code", null, p.texto));
+      else if (p.tipo === "link") {
+        var a = criar("a", null, p.texto);
+        a.href = p.href;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        pai.appendChild(a);
+      } else pai.appendChild(document.createTextNode(p.texto));
     });
   }
 
@@ -253,6 +403,12 @@
         var p = criar("p");
         b.linhas.forEach(function (l, i) { if (i) p.appendChild(document.createElement("br")); preencherInline(p, l); });
         pai.appendChild(p);
+      } else if (b.tipo === "h") {
+        var h = criar("h" + b.nivel);
+        preencherInline(h, b.texto);
+        pai.appendChild(h);
+      } else if (b.tipo === "table") {
+        pai.appendChild(montarTabela(b));
       } else {
         var lista = criar(b.tipo);
         b.itens.forEach(function (it) { var li = criar("li"); preencherInline(li, it); lista.appendChild(li); });
@@ -261,110 +417,214 @@
     });
   }
 
-  function rolarParaOFim() { el.transcricao.scrollTop = el.transcricao.scrollHeight; }
+  function classeDaCelula(b, idx, valor) {
+    var a = b.alinh[idx] || (valor && ehNumerico(valor) ? "right" : "");
+    return a ? "is-" + a : "";
+  }
 
-  function esconderVazio() { if (el.vazio && el.vazio.parentNode) el.vazio.parentNode.removeChild(el.vazio); }
+  function montarTabela(b) {
+    var wrap = criar("div", "table-wrap");
+    var t = criar("table");
+    var thead = criar("thead");
+    var trh = criar("tr");
+    b.cab.forEach(function (c, i) {
+      var th = criar("th", b.alinh[i] ? "is-" + b.alinh[i] : "");
+      th.scope = "col";
+      preencherInline(th, c);
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    t.appendChild(thead);
+    var tbody = criar("tbody");
+    b.linhas.forEach(function (linha) {
+      var tr = criar("tr");
+      b.cab.forEach(function (_, i) {
+        var td = criar("td", classeDaCelula(b, i, linha[i] || ""));
+        preencherInline(td, linha[i] || "");
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    t.appendChild(tbody);
+    wrap.appendChild(t);
+    return wrap;
+  }
 
-  function adicionarMensagemUsuario(texto) {
-    esconderVazio();
-    var m = criar("article", "msg msg-usuario");
-    m.appendChild(criar("span", "msg-autor", "Você"));
-    m.appendChild(criar("div", "bolha", texto));
-    el.transcricao.appendChild(m);
+  /* ---- rolagem inteligente ---- */
+  function pertoDoFim() { return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 96; }
+  function rolarParaOFim() { messagesEl.scrollTop = messagesEl.scrollHeight; jumpEl.hidden = true; }
+  function aposAdicionar(deveRolar) { if (deveRolar) rolarParaOFim(); else jumpEl.hidden = false; }
+
+  function removerBoasVindas() {
+    var w = document.getElementById("welcome");
+    if (w && w.parentNode) w.parentNode.removeChild(w);
+  }
+
+  function criarAvatar() { return criar("div", "avatar", "ST"); }
+
+  /* ---- mensagens ---- */
+  function addUserMessage(texto, ts) {
+    removerBoasVindas();
+    var noFim = pertoDoFim();
+    var li = criar("li", "message message--user");
+    li.appendChild(criar("div", "message__body", texto));
+    li.appendChild(criar("span", "message__time", formatarHora(ts)));
+    messagesEl.appendChild(li);
+    aposAdicionar(true || noFim);
+  }
+
+  function copiarTexto(texto) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(texto);
+    return new Promise(function (resolve, reject) {
+      try {
+        var t = document.createElement("textarea");
+        t.value = texto;
+        t.setAttribute("readonly", "");
+        t.style.position = "fixed";
+        t.style.opacity = "0";
+        document.body.appendChild(t);
+        t.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(t);
+        if (ok) resolve(); else reject(new Error("copy"));
+      } catch (e) { reject(e); }
+    });
+  }
+
+  function botaoCopiar(texto) {
+    var b = criar("button", "icon-button");
+    b.type = "button";
+    var rotulo = criar("span", null, "Copiar");
+    rotulo.setAttribute("role", "status");
+    b.appendChild(icone("copiar"));
+    b.appendChild(rotulo);
+    b.addEventListener("click", function () {
+      copiarTexto(texto).then(function () {
+        rotulo.textContent = "Copiado";
+      }, function () {
+        rotulo.textContent = "Não foi possível copiar";
+      }).then(function () {
+        setTimeout(function () { rotulo.textContent = "Copiar"; }, 1800);
+      });
+    });
+    return b;
+  }
+
+  function addAssistantMessage(r, ts) {
+    var noFim = pertoDoFim();
+    var li = criar("li", "message message--assistant");
+    li.appendChild(criarAvatar());
+    var main = criar("div", "message__main");
+
+    var cab = criar("div", "message__head");
+    cab.appendChild(criar("span", "message__author", "Assistente"));
+    cab.appendChild(criar("span", "message__time", formatarHora(ts)));
+    if (r.texto) cab.appendChild(botaoCopiar(r.texto));
+    main.appendChild(cab);
+
+    if (r.alertas.length) {
+      var ul = criar("ul", "alerts");
+      ul.setAttribute("aria-label", "Alertas");
+      r.alertas.forEach(function (a) {
+        var classe = "alert" + (a.nivel === "alto" ? " alert--high" : a.nivel === "info" ? " alert--info" : "");
+        var item = criar("li", classe);
+        item.appendChild(icone(a.nivel === "info" ? "info" : "alerta"));
+        var txt = criar("div");
+        txt.appendChild(criar("span", "alert__label", a.rotulo + ":"));
+        txt.appendChild(document.createTextNode(a.texto));
+        item.appendChild(txt);
+        ul.appendChild(item);
+      });
+      main.appendChild(ul);
+    }
+
+    if (r.texto) {
+      var corpo = criar("div", "message__body");
+      renderizarTexto(corpo, r.texto);
+      main.appendChild(corpo);
+    }
+
+    if (r.fontes.length) {
+      var bloco = criar("div", "sources");
+      bloco.appendChild(criar("p", "sources__title", "Fontes consultadas"));
+      var lista = criar("ul", "sources__list");
+      r.fontes.forEach(function (f) {
+        var item = criar("li", "source");
+        item.appendChild(criar("span", "source__type", f.tipo || tipoArquivo(f.arquivo)));
+        item.appendChild(criar("span", "source__name", f.arquivo));
+        if (f.pagina != null) item.appendChild(criar("span", "source__page", "p. " + f.pagina));
+        lista.appendChild(item);
+      });
+      bloco.appendChild(lista);
+      main.appendChild(bloco);
+    }
+
+    if (r.agentes.length) {
+      var ag = criar("p", "agents");
+      ag.appendChild(criar("span", "agents__title", "Agentes acionados: "));
+      ag.appendChild(document.createTextNode(r.agentes.join(", ")));
+      main.appendChild(ag);
+    }
+
+    li.appendChild(main);
+    messagesEl.appendChild(li);
+    aposAdicionar(noFim);
+  }
+
+  function addSystemMessage(texto) {
+    var li = criar("li", "message message--system", texto);
+    messagesEl.appendChild(li);
     rolarParaOFim();
   }
 
-  function adicionarDigitando() {
-    var m = criar("article", "msg msg-assistente");
-    m.setAttribute("aria-label", "O assistente está respondendo");
-    m.appendChild(criar("span", "msg-autor", "Assistente"));
-    var b = criar("div", "bolha");
-    var d = criar("span", "digitando");
-    d.setAttribute("role", "status");
-    d.setAttribute("aria-label", "Carregando resposta");
-    d.appendChild(criar("span")); d.appendChild(criar("span")); d.appendChild(criar("span"));
-    b.appendChild(d); m.appendChild(b);
-    el.transcricao.appendChild(m);
+  function addTyping() {
+    var li = criar("li", "message message--assistant");
+    li.appendChild(criarAvatar());
+    var t = criar("div", "typing");
+    t.setAttribute("role", "status");
+    var pontos = criar("span", "typing__dots");
+    pontos.setAttribute("aria-hidden", "true");
+    pontos.appendChild(criar("span")); pontos.appendChild(criar("span")); pontos.appendChild(criar("span"));
+    var txt = criar("span", "typing__text", "Consultando a cooperativa…");
+    t.appendChild(pontos);
+    t.appendChild(txt);
+    li.appendChild(t);
+    messagesEl.appendChild(li);
     rolarParaOFim();
-    return m;
+    estado.timerLento = setTimeout(function () {
+      txt.textContent = "Ainda consultando. Isso pode levar alguns segundos.";
+    }, CONFIG.avisoLentoMs);
+    return li;
   }
 
-  function removerDigitando() {
+  function removeTyping() {
+    clearTimeout(estado.timerLento);
     if (estado.digitandoEl && estado.digitandoEl.parentNode) estado.digitandoEl.parentNode.removeChild(estado.digitandoEl);
     estado.digitandoEl = null;
   }
 
-  function adicionarMensagemAssistente(r) {
-    var m = criar("article", "msg msg-assistente");
-    m.appendChild(criar("span", "msg-autor", "Assistente"));
-
-    if (r.alertas.length) {
-      var ul = criar("ul", "alertas");
-      ul.setAttribute("aria-label", "Alertas");
-      r.alertas.forEach(function (a) {
-        var li = criar("li", "alerta");
-        li.setAttribute("data-nivel", a.nivel);
-        li.appendChild(criar("span", "alerta-rotulo", a.rotulo + ":"));
-        li.appendChild(criar("span", null, a.texto));
-        ul.appendChild(li);
-      });
-      m.appendChild(ul);
-    }
-
-    if (r.texto) {
-      var b = criar("div", "bolha");
-      renderizarTexto(b, r.texto);
-      m.appendChild(b);
-    }
-
-    if (r.fontes.length) {
-      var bloco = criar("div", "fontes");
-      bloco.appendChild(criar("p", "fontes-titulo", "Fontes"));
-      var lista = criar("ul", "fontes-lista");
-      r.fontes.forEach(function (f) {
-        var li = criar("li", "fonte");
-        li.appendChild(criar("span", null, f.arquivo));
-        if (f.pagina != null) li.appendChild(criar("span", "fonte-pag", "p. " + f.pagina));
-        lista.appendChild(li);
-      });
-      bloco.appendChild(lista);
-      m.appendChild(bloco);
-    }
-
-    if (r.agentes.length) {
-      var ag = criar("p", "agentes");
-      ag.appendChild(criar("span", "agentes-titulo", "Agentes acionados: "));
-      ag.appendChild(document.createTextNode(r.agentes.join(", ")));
-      m.appendChild(ag);
-    }
-
-    el.transcricao.appendChild(m);
-    rolarParaOFim();
-  }
-
   /* ---- erro ---- */
-  function mostrarErro(info) {
-    el.faixaErroTexto.textContent = info.mensagem;
-    el.tentar.hidden = !info.podeTentarDeNovo;
-    el.faixaErro.hidden = false;
+  function showNotice(info) {
+    noticeText.textContent = info.mensagem;
+    retryEl.hidden = !info.podeTentarDeNovo;
+    noticeEl.hidden = false;
   }
-  function limparErro() { el.faixaErro.hidden = true; el.faixaErroTexto.textContent = ""; }
+  function clearNotice() { noticeEl.hidden = true; noticeText.textContent = ""; }
 
-  /* ---- estado do composer ---- */
-  function definirEnviando(valor) {
+  /* ---- campo de mensagem ---- */
+  function setSending(valor) {
     estado.enviando = valor;
-    el.enviar.disabled = valor;
-    el.campo.disabled = valor;
-    el.enviar.textContent = valor ? "Enviando…" : "Enviar";
-    el.transcricao.setAttribute("aria-busy", valor ? "true" : "false");
-    if (!valor) el.campo.focus();
+    sendEl.disabled = valor;
+    cancelEl.hidden = !valor;
+    messagesEl.setAttribute("aria-busy", valor ? "true" : "false");
+    if (!valor) inputEl.focus();
   }
 
   function ajustarAltura() {
-    el.campo.style.height = "auto";
-    el.campo.style.height = Math.min(el.campo.scrollHeight, 180) + "px";
-    var n = el.campo.value.length;
-    el.contador.textContent = n > CONFIG.limiteCaracteres * 0.8 ? n + "/" + CONFIG.limiteCaracteres : "";
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 144) + "px";
+    var n = inputEl.value.length;
+    countEl.textContent = n > CONFIG.limiteCaracteres * 0.8 ? n + " de " + CONFIG.limiteCaracteres : "";
   }
 
   /* ---- envio ---- */
@@ -375,114 +635,153 @@
     });
   }
 
-  function enviarMensagem(texto, tentandoDeNovo) {
+  function montarCorpo(texto) {
+    var corpo = { message: texto, session_id: estado.sessionId };
+    if (CONFIG.enviarUserId) corpo.user_id = estado.userId;
+    return corpo;
+  }
+
+  function sendMessage(texto, tentandoDeNovo) {
     if (estado.enviando) return;
     texto = texto.trim();
     if (!texto) return;
 
-    limparErro();
+    clearNotice();
     estado.ultimaMensagem = texto;
-    if (!tentandoDeNovo) adicionarMensagemUsuario(texto);
-    el.campo.value = "";
+    estado.cancelado = false;
+    if (!tentandoDeNovo) {
+      var agora = Date.now();
+      addUserMessage(texto, agora);
+      estado.historico.push({ papel: "user", texto: texto, ts: agora });
+      gravarHistorico();
+    }
+    inputEl.value = "";
     ajustarAltura();
-    definirEnviando(true);
-    estado.digitandoEl = adicionarDigitando();
+    setSending(true);
+    estado.digitandoEl = addTyping();
 
     var controle = new AbortController();
+    estado.controle = controle;
     var estourou = false;
     var timer = setTimeout(function () { estourou = true; controle.abort(); }, CONFIG.tempoLimiteMs);
 
     fetch(CONFIG.endpointChat, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify({ message: texto, session_id: estado.sessionId, user_id: estado.userId }),
+      body: JSON.stringify(montarCorpo(texto)),
       signal: controle.signal
     })
       .then(function (resp) {
         return lerCorpo(resp).then(function (corpo) { return { resp: resp, corpo: corpo }; });
       })
       .then(function (r) {
-        removerDigitando();
-        if (!r.resp.ok) { mostrarErro(descreverErro("http", r.resp.status, r.corpo)); return; }
-        if (!r.corpo || r.corpo.__texto !== undefined) { mostrarErro(descreverErro("formato")); return; }
+        removeTyping();
+        if (!r.resp.ok) { showNotice(descreverErro("http", r.resp.status, r.corpo)); return; }
+        if (!r.corpo || r.corpo.__texto !== undefined) { showNotice(descreverErro("formato")); return; }
         var dados = normalizarResposta(r.corpo);
         if (dados.sessionId && dados.sessionId !== estado.sessionId) {
           estado.sessionId = dados.sessionId;
           gravarSessao(dados.sessionId);
         }
-        if (dados.vazia) { mostrarErro(descreverErro("vazia")); return; }
-        adicionarMensagemAssistente(dados);
+        if (dados.vazia) { showNotice(descreverErro("vazia")); return; }
+        var ts = Date.now();
+        addAssistantMessage(dados, ts);
+        estado.historico.push({ papel: "assistant", texto: dados.texto, alertas: dados.alertas, fontes: dados.fontes, agentes: dados.agentes, ts: ts });
+        gravarHistorico();
       })
-      .catch(function (e) {
-        removerDigitando();
-        mostrarErro(descreverErro(estourou ? "tempo" : "rede"));
+      .catch(function () {
+        removeTyping();
+        if (estado.cancelado) {
+          addSystemMessage("Resposta cancelada.");
+          if (!inputEl.value) { inputEl.value = texto; ajustarAltura(); }
+          return;
+        }
+        showNotice(descreverErro(estourou ? "tempo" : "rede"));
       })
       .then(function () {
         clearTimeout(timer);
-        definirEnviando(false);
+        estado.controle = null;
+        setSending(false);
       });
   }
 
-  /* ---- nova conversa ---- */
-  function novaConversa() {
-    if (estado.enviando) return;
-    estado.sessionId = null;
-    gravarSessao(null);
-    limparErro();
-    el.transcricao.textContent = "";
-    var vazio = criar("div", "vazio");
-    vazio.id = "vazio";
-    vazio.appendChild(criar("h2", null, "Nova conversa iniciada"));
-    vazio.appendChild(criar("p", null, "O assistente não lembra da conversa anterior. Escreva sua mensagem abaixo."));
-    el.transcricao.appendChild(vazio);
-    el.vazio = vazio;
-    el.campo.value = "";
-    ajustarAltura();
-    el.campo.focus();
+  function cancelarEnvio() {
+    if (!estado.enviando || !estado.controle) return;
+    estado.cancelado = true;
+    estado.controle.abort();
   }
 
-  /* ---- saúde do servidor ---- */
-  function verificarServidor() {
-    var c = new AbortController();
-    var t = setTimeout(function () { c.abort(); }, 5000);
-    fetch(CONFIG.endpointSaude, { signal: c.signal })
-      .then(function (r) { clearTimeout(t); definirStatus(r.ok); })
-      .catch(function () { clearTimeout(t); definirStatus(false); });
+  /* ---- nova conversa e histórico ---- */
+  function renderizarHistorico() {
+    if (!estado.historico.length) return;
+    removerBoasVindas();
+    estado.historico.forEach(function (m) {
+      if (m.papel === "user") addUserMessage(String(m.texto || ""), m.ts);
+      else addAssistantMessage({
+        texto: String(m.texto || ""),
+        alertas: Array.isArray(m.alertas) ? m.alertas : [],
+        fontes: Array.isArray(m.fontes) ? m.fontes : [],
+        agentes: Array.isArray(m.agentes) ? m.agentes : []
+      }, m.ts);
+    });
+    rolarParaOFim();
   }
-  function definirStatus(ok) {
-    el.status.setAttribute("data-estado", ok ? "ok" : "erro");
-    el.statusTexto.textContent = ok ? "Servidor conectado" : "Servidor indisponível";
+
+  function newChat() {
+    if (estado.enviando) cancelarEnvio();
+    estado.sessionId = null;
+    gravarSessao(null);
+    limparHistorico();
+    clearNotice();
+    messagesEl.textContent = "";
+    if (welcomeModelo) messagesEl.appendChild(welcomeModelo.cloneNode(true));
+    jumpEl.hidden = true;
+    inputEl.value = "";
+    ajustarAltura();
+    inputEl.focus();
   }
 
   /* ---- eventos ---- */
-  el.form.addEventListener("submit", function (ev) { ev.preventDefault(); enviarMensagem(el.campo.value, false); });
+  composerEl.addEventListener("submit", function (ev) { ev.preventDefault(); sendMessage(inputEl.value, false); });
 
-  el.campo.addEventListener("keydown", function (ev) {
+  inputEl.addEventListener("keydown", function (ev) {
     if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) {
       ev.preventDefault();
-      el.form.requestSubmit();
+      if (!estado.enviando) composerEl.requestSubmit();
     }
   });
-  el.campo.addEventListener("input", ajustarAltura);
+  inputEl.addEventListener("input", ajustarAltura);
 
-  el.tentar.addEventListener("click", function () { enviarMensagem(estado.ultimaMensagem, true); });
-  el.fecharErro.addEventListener("click", function () { limparErro(); el.campo.focus(); });
-  el.novaConversa.addEventListener("click", novaConversa);
-
-  Array.prototype.forEach.call(document.querySelectorAll(".atalho"), function (b) {
-    b.addEventListener("click", function () {
-      if (estado.enviando) return;
-      el.campo.value = b.getAttribute("data-texto") || "";
-      ajustarAltura();
-      el.campo.focus();
-    });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && estado.enviando) cancelarEnvio();
   });
 
-  window.addEventListener("online", verificarServidor);
-  window.addEventListener("offline", function () { definirStatus(false); });
+  messagesEl.addEventListener("click", function (ev) { // sugestões (sobrevivem a "Nova conversa")
+    var b = ev.target.closest ? ev.target.closest(".suggestion") : null;
+    if (!b) return;
+    inputEl.value = b.getAttribute("data-text") || "";
+    ajustarAltura();
+    inputEl.focus();
+  });
+  messagesEl.addEventListener("scroll", function () { if (pertoDoFim()) jumpEl.hidden = true; });
+  jumpEl.addEventListener("click", function () { rolarParaOFim(); inputEl.focus(); });
 
-  el.campo.disabled = false; // o esqueleto original deixava o campo desabilitado
+  retryEl.addEventListener("click", function () { sendMessage(estado.ultimaMensagem, true); });
+  dismissEl.addEventListener("click", function () { clearNotice(); inputEl.focus(); });
+  cancelEl.addEventListener("click", cancelarEnvio);
+  newChatEl.addEventListener("click", newChat);
+
+  window.addEventListener("online", checkHealth);
+  window.addEventListener("offline", function () {
+    statusEl.dataset.state = "error";
+    statusText.textContent = "Servidor indisponível";
+  });
+
+  inputEl.disabled = false; // na etapa 3 o campo ficava desabilitado
+  sendEl.disabled = false;
+  estado.historico = lerHistorico();
+  renderizarHistorico();
   ajustarAltura();
-  verificarServidor();
-  el.campo.focus();
+  checkHealth();
+  inputEl.focus();
 })(typeof window !== "undefined" ? window : this);

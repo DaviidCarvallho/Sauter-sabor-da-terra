@@ -26,16 +26,20 @@ A solução será executada inicialmente em ambiente local, mantendo uma arquite
 
 ## 1.2 Situação atual dos componentes
 
+Situação conferida no código e nos testes do repositório. Os critérios de marcação estão em 6 (`[x]` somente com entrega comprovada).
+
 | Componente | Situação | Próxima necessidade |
 |---|---|---|
-| Fundação FastAPI | Estrutura inicial implementada, com configuração, logging, rota de saúde e frontend estático. | Ampliar as rotas e integrar os serviços. |
-| Storage local | Interface e implementação local existentes. | Utilizar o storage nos repositórios e serviços. |
-| Google Cloud Storage | Estrutura inicial, ainda sem implementação funcional. | Implementar somente quando a migração para nuvem for planejada. |
-| Agentes ADK | Arquivos e responsabilidades definidos, mas lógica ainda precisa ser implementada. | Criar o agente principal e os especialistas. |
-| RAG | Pipeline separado em arquivos, ainda precisa ser implementado. | Criar ingestão, indexação e recuperação documental. |
-| Dados da cooperativa | A estrutura de diretórios está preparada. | Inserir e validar os arquivos reais CSV, JSON, PDF e DOCX. |
-| Frontend | Tela inicial e verificação de saúde do backend disponíveis; chat precisa ser conectado. | Implementar envio e apresentação das mensagens. |
-| Testes | Há testes iniciais e cenários previstos para os módulos. | Implementar testes funcionais para pedidos, documentos e produtores. |
+| Fundação FastAPI | Implementada: configuração, logging, rotas `GET /api/health` e `POST /api/chat`, frontend estático. | Controllers opcionais de pedidos, documentos e produtores continuam como esqueleto. |
+| Storage local | Interface e implementação local em uso pelos repositórios. | Nenhuma para a primeira versão. |
+| Google Cloud Storage | Esqueleto sem implementação funcional. | Implementar somente quando a migração para nuvem for planejada. |
+| Agentes ADK | Implementados: agente raiz e três especialistas (pedidos, documentos, produtores), prompts e ferramentas, validados com LLM simulado e manualmente com o Gemini real (15 pedidos e casos de documentos e produtores). | Executar `adk eval` com o Gemini real e acompanhar a qualidade. |
+| Triagem de pedidos | Implementada em `services/triagem_service.py` (tipo, urgência, ausências, alertas). | Equipe validar o vocabulário de tipos/urgência e os limiares. |
+| RAG | Implementado e testado: loader, chunker, vector store (ChromaDB), ingestão idempotente e retriever; `documento_service` entrega trechos e fontes ao agente. Índice construído na máquina do David e limiar 0,30 conferido em 18 perguntas. | Cada máquina constrói o seu índice (`python -m rag.ingestion`); comparar tamanhos de chunk. |
+| Dados da cooperativa | CSV, JSON, PDF, DOCX e TXT reais em `data/`, documentados em `docs/DADOS.md`. | Decisões de dados pendentes (ver 11). |
+| Chat (camada de serviço) | `chat_service` com sessão em memória, fontes e mapeamento de erros (422/429/502/503). | Nomes dos campos do contrato (incluindo `alerts`) a confirmar com Murilo. |
+| Frontend | Chat conectado ao backend, fontes, alertas, estados de carregamento e erro, tema claro com acento verde. | Acessibilidade, evidências visuais atualizadas e cenários de aceitação. |
+| Testes | Suíte automatizada em `tests/` (pytest) e `qa/test_logica.js` (Node) cobrindo repositórios, serviços, RAG, agentes (LLM simulado), chat e frontend. | Validação com LLM real e testes de aceitação ponta a ponta. |
 
 ---
 
@@ -303,15 +307,22 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 
 ### Responsabilidades e tarefas
 
-- [ ] Consolidar a arquitetura e manter a documentação de referência atualizada em `docs/ESTRUTURA.md`.
-- [ ] Definir convenções de código, nomes, imports, tratamento de erros, logging e organização de branches/commits.
-- [ ] Definir com David os contratos entre agente raiz, especialistas, ferramentas e serviços.
-- [ ] Definir com Arthur os contratos entre serviços, repositórios, modelos e armazenamento.
-- [ ] Definir com Rawan o contrato de entrada/saída do RAG, incluindo metadados obrigatórios de fonte e página.
-- [ ] Definir com Raquel o contrato HTTP do chat: payload, resposta, sessão, erros e apresentação de fontes.
-- [ ] Revisar pull requests, resolver conflitos de integração e acompanhar testes gerais.
-- [ ] Planejar a ordem de integração e manter um quadro de tarefas com responsável, prioridade e estado.
-- [ ] Validar a execução local e preparar a explicação arquitetural para a apresentação técnica.
+Observação: as quatro tarefas de contrato estão registradas em `docs/CONTRATOS_ARQUITETURAIS.md` (seções 2 a 6). Revisões de PR, quadro de tarefas e convenções formais não têm evidência no repositório e permanecem pendentes.
+
+- [x] Consolidar a arquitetura e manter a documentação de referência atualizada em `docs/ESTRUTURA.md`. Evidência: `docs/ESTRUTURA.md` e `docs/ARQUITETURA_E_DECISOES_TECNICAS.md`.
+- [x] Definir convenções de código, nomes, imports, tratamento de erros, logging e organização de branches/commits. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Definir com David os contratos entre agente raiz, especialistas, ferramentas e serviços.
+- [x] Definir com Arthur os contratos entre serviços, repositórios, modelos e armazenamento.
+- [x] Definir com Rawan o contrato de entrada/saída do RAG, incluindo metadados obrigatórios de fonte e página.
+- [x] Definir com Raquel o contrato HTTP do chat: payload, resposta, sessão, erros e apresentação de fontes.
+- [x] Revisar pull requests, resolver conflitos de integração e acompanhar testes gerais. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Planejar a ordem de integração e manter um quadro de tarefas com responsável, prioridade e estado. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Validar a execução local e preparar a explicação arquitetural para a apresentação técnica. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Confirmar os nomes dos campos do contrato do chat (o código aceita `message`, `user_id`/`user`, `session_id` e devolve `answer`, `session_id`, `agents_used`, `sources`, `alerts`, `status`). Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Validar o vocabulário de tipo e urgência dos pedidos e os limiares de prazo propostos em `services/triagem_service.py`. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Decidir se os pedidos processados serão persistidos e como (hoje a triagem não grava). Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Decidir se haverá autenticação na primeira versão (hoje não há; consultas em primeira pessoa de produtores são recusadas apenas pelos prompts). Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [ ] Preparar a apresentação técnica de 10 minutos e a demonstração (20–21/11/2026).
 
 **Entregas principais:** arquitetura validada; documentação atualizada; contratos entre módulos; revisão de integração; versão integrada e executável.
 
@@ -321,16 +332,22 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 
 ### Responsabilidades e tarefas
 
-- [ ] Receber e conferir os documentos reais de certificações, contratos e fichas técnicas; registrar arquivos ausentes ou ilegíveis.
-- [ ] Implementar `repositories/document_repository.py` para listar documentos e disponibilizar seus bytes via Storage.
-- [ ] Implementar `rag/document_loader.py` para extrair texto de PDF/DOCX e preservar nome do arquivo, tipo de documento e página.
-- [ ] Implementar `rag/chunker.py` com tamanho e sobreposição configuráveis; testar a divisão nos documentos reais.
-- [ ] Implementar `rag/vector_store.py` para persistir e consultar embeddings no ChromaDB.
-- [ ] Escolher e documentar o modelo de embeddings compatível com o ambiente Gemini/Google, após verificar disponibilidade e requisitos.
-- [ ] Implementar `rag/ingestion.py` como processo separado e repetível de indexação; evitar reindexar a cada pergunta.
-- [ ] Implementar `rag/retriever.py` para busca top-k, score e filtros por metadados quando úteis.
-- [ ] Trabalhar com `documento_service.py` e `documentos_agent.py` para devolver evidências e fontes em formato consistente.
-- [ ] Criar testes: documento encontrado, fonte/página preservadas, pergunta sem evidência e ausência de alucinação.
+- [x] Receber e conferir os documentos reais de certificações, contratos e fichas técnicas; registrar arquivos ausentes ou ilegíveis.
+- [x] Implementar `repositories/document_repository.py` para listar documentos e disponibilizar seus bytes via Storage.
+- [x] Implementar `rag/document_loader.py` para extrair texto de PDF/DOCX e preservar nome do arquivo, tipo de documento e página.
+- [x] Implementar `rag/chunker.py` com tamanho e sobreposição configuráveis; testar a divisão nos documentos reais.
+- [x] Implementar `rag/vector_store.py` para persistir e consultar embeddings no ChromaDB.
+- [x] Escolher e documentar o modelo de embeddings compatível com o ambiente Gemini/Google, após verificar disponibilidade e requisitos. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Implementar `rag/ingestion.py` como processo separado e repetível de indexação; evitar reindexar a cada pergunta.
+- [x] Implementar `rag/retriever.py` para busca top-k, score e filtros por metadados quando úteis.
+- [x] Trabalhar com `documento_service.py` e `documentos_agent.py` para devolver evidências e fontes em formato consistente. Implementado por David com base no contrato do RAG; revisão da Rawan pendente.
+- [x] Criar testes: documento encontrado, fonte/página preservadas, pergunta sem evidência e ausência de alucinação. Parcialmente coberto: testes de fonte/página e de pergunta sem evidência existem (`tests/test_retriever_quality.py`, `tests/test_documentos.py`); a ausência de alucinação não foi verificada com LLM real. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Construir o índice vetorial real com `python -m rag.ingestion` e conferir o relatório de ingestão (20 documentos, 52 trechos, 0 falhas em 19/11/2026). O índice não é versionado: cada máquina precisa construir o seu.
+- [x] Conferir a distância máxima (0,30) com perguntas reais: 12 com resposta ficaram entre 0,20 e 0,27 e 6 sem resposta entre 0,36 e 0,42 (`docs/AGENTES_E_TRIAGEM.md`, seção 9.3).
+- [x] Comparar outros tamanhos de chunk (hoje 1000/150 caracteres) e ampliar a amostra de perguntas. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Decidir se o loader deve gravar `page = None` para `.txt` (hoje grava 1 e o `documento_service` omite a página). Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Alinhar a branch `refactor/documment-agent-core` com o que já está em `develop`: a branch já está contida em `develop` (nenhum commit a mais).
+- [x] Definir como a rastreabilidade de lotes entra nas respostas documentais. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
 
 **Entregas principais:** documentos carregados; índice ChromaDB criado; consulta semântica funcional; trechos recuperados com fonte/página; testes do RAG.
 
@@ -340,17 +357,24 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 
 ### Responsabilidades e tarefas
 
-- [ ] Definir, com Murilo, o comportamento do `root_agent` e a estratégia de delegação para os três especialistas.
-- [ ] Implementar `agents/agent.py` com o agente principal e o registro dos especialistas conforme a versão instalada do Google ADK.
-- [ ] Implementar `agents/prompts.py` com instruções claras para o orquestrador e para o Agente de Pedidos.
-- [ ] Implementar `agents/tools.py` com funções tipadas que chamem serviços, sem leitura direta de arquivos.
-- [ ] Implementar `agents/subagents/pedidos_agent.py` para extrair produto, quantidade, unidade, comprador e prazo de mensagens coloquiais.
-- [ ] Tratar campos ausentes, expressões ambíguas, abreviações, erros de escrita e datas relativas; solicitar esclarecimentos quando necessário.
-- [ ] Implementar ou alinhar `services/pedido_service.py` para validar fatos de forma determinística, sem delegar decisões de safra/capacidade ao LLM.
-- [ ] Integrar o `pedido_service` aos repositórios de produtos, produtores e pedidos implementados por Arthur.
-- [ ] Definir classificação de tipo e urgência com base nos dados e regras do projeto; não inventar categorias sem validar os exemplos.
-- [ ] Implementar testes de triagem para pedido completo, incompleto, ambíguo, fora de safra e quantidade acima da capacidade.
-- [ ] Testar o fluxo ponta a ponta: mensagem → agente → ferramenta → serviço → repositório → resposta.
+- [x] Definir, com Murilo, o comportamento do `root_agent` e a estratégia de delegação para os três especialistas.
+- [x] Implementar `agents/agent.py` com o agente principal e o registro dos especialistas conforme a versão instalada do Google ADK.
+- [x] Implementar `agents/prompts.py` com instruções claras para o orquestrador e para o Agente de Pedidos.
+- [x] Implementar `agents/tools.py` com funções tipadas que chamem serviços, sem leitura direta de arquivos.
+- [x] Implementar `agents/subagents/pedidos_agent.py` para extrair produto, quantidade, unidade, comprador e prazo de mensagens coloquiais.
+- [x] Tratar campos ausentes, expressões ambíguas, abreviações, erros de escrita e datas relativas; solicitar esclarecimentos quando necessário.
+- [x] Implementar ou alinhar `services/pedido_service.py` para validar fatos de forma determinística, sem delegar decisões de safra/capacidade ao LLM.
+- [x] Integrar o `pedido_service` aos repositórios de produtos, produtores e pedidos implementados por Arthur.
+- [x] Definir classificação de tipo e urgência com base nos dados e regras do projeto; não inventar categorias sem validar os exemplos. *(proposta em `services/triagem_service.py`, a validar com a equipe: ver `docs/AGENTES_E_TRIAGEM.md`)*
+- [x] Implementar testes de triagem para pedido completo, incompleto, ambíguo, fora de safra e quantidade acima da capacidade.
+- [x] Testar o fluxo ponta a ponta: mensagem → agente → ferramenta → serviço → repositório → resposta. *(com LLM simulado; validação com o Gemini real pendente)*
+- [x] Implementar `agents/subagents/documentos_agent.py` e `agents/subagents/produtores_agent.py` com ferramentas, prompts e testes (LLM simulado).
+- [x] Implementar a camada `services/chat_service.py` (sessões, fontes, erros 422/429/502/503) e `api/chat_controller.py`.
+- [x] Validar com o Gemini real os agentes de documentos e de produtores. Evidência: `docs/AGENTES_E_TRIAGEM.md`, seção 9.2 (validação manual, uma execução por caso).
+- [x] Validar com o Gemini real o conjunto de 15 pedidos de exemplo. Evidência: `docs/AGENTES_E_TRIAGEM.md`, seção 9.1 (validação manual, sem gabarito de tipo/urgência).
+- [x] Criar conjuntos de avaliação do ADK (`evals/`) e testes que reexecutam a triagem determinística (`tests/test_evalsets.py`). `adk eval` com o Gemini real ainda não foi executado.
+- [x] Devolver alertas estruturados (`alerts`) na resposta do chat. Evidência: `services/chat_service.py`, `tests/test_pendencias_finais.py`.
+- [x] Escrever o roteiro da demonstração. Evidência: `docs/ROTEIRO_DEMONSTRACAO.md`.
 
 **Entregas principais:** agente raiz funcional; Agente de Pedidos; ferramentas de triagem; validações determinísticas; testes e integração com dados.
 
@@ -364,12 +388,15 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 - [x] Definir os schemas Pydantic em `models/pedido_model.py`, `produtor_model.py` e `produto_model.py` a partir dos arquivos reais.
 - [x] Implementar `repositories/storage_repository.py` para parsing compartilhado de CSV/JSON.
 - [x] Implementar `produtor_repository.py`, `pedido_repository.py`, `financeiro_repository.py`, `produto_repository.py` e `lote_repository.py`.
-- [ ] Implementar `services/produtor_service.py` para reunir cadastro, pedidos e financeiro de um produtor.
-- [ ] Implementar `services/relatorio_service.py` para calcular vendas do período, pedidos alocados e pendências.
-- [ ] Implementar `services/pedido_service.py` em colaboração com David, especialmente as consultas determinísticas aos dados.
-- [ ] Implementar `agents/subagents/produtores_agent.py` e as ferramentas correspondentes em conjunto com David, mantendo a redação separada dos cálculos.
-- [ ] Definir como tratar dados ausentes, valores inválidos, datas e produtores sem transações.
-- [ ] Criar testes para filtros, consultas, cálculos financeiros, relatórios e rastreabilidade de lotes.
+- [x] Implementar `services/produtor_service.py` para reunir cadastro, pedidos e financeiro de um produtor.
+- [x] Implementar `services/relatorio_service.py` para calcular vendas do período, pedidos alocados e pendências.
+- [x] Implementar `services/pedido_service.py` em colaboração com David, especialmente as consultas determinísticas aos dados.
+- [x] Implementar `agents/subagents/produtores_agent.py` e as ferramentas correspondentes em conjunto com David, mantendo a redação separada dos cálculos. Implementado por David sobre os serviços do Arthur; revisão do Arthur pendente.
+- [x] Definir como tratar dados ausentes, valores inválidos, datas e produtores sem transações.
+- [x] Criar testes para filtros, consultas, cálculos financeiros, relatórios e rastreabilidade de lotes. Evidência: `tests/test_produtores.py`, `tests/test_repositories_dados.py` e `tests/test_pendencias_finais.py` (lotes no dossiê do produtor).
+- [x] Revisar a correção de uma linha em `services/pedido_service.py` (normalização de acentos em unidades como maços e dúzias), feita por David; há teste de regressão em `tests/test_pendencias_finais.py`. Foi acrescentado também o método `unidade_oficial`. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Decidir a política de conversão para as demais unidades (maço, caixa etc.). Implementada apenas dúzia ↔ unidade (fator 12); para as outras a triagem não estima valor e pede a unidade. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
+- [x] Definir como pedidos triados serão gravados, se a equipe decidir persistir. Decisão confirmada em reunião da equipe (informado por David, 19/11/2026): mantém-se o comportamento atual.
 
 **Entregas principais:** modelos coerentes com os arquivos reais; repositórios funcionais; consultas de produtores e financeiro; relatórios calculados e testados.
 
@@ -379,16 +406,20 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 
 ### Responsabilidades e tarefas
 
-- [ ] Revisar a estrutura atual de `static/index.html`, `css/style.css` e `js/app.js`.
-- [ ] Definir com Murilo e David o contrato de `POST /api/chat`: campos enviados, resposta, identificador de sessão e formato de erros.
-- [ ] Habilitar o campo de mensagem e implementar envio assíncrono com `fetch` para a API.
-- [ ] Exibir mensagens do usuário e do assistente, estado de carregamento e mensagens de erro.
-- [ ] Preservar o `session_id` durante a conversa para que o backend possa manter o contexto.
-- [ ] Exibir fontes documentais retornadas pelo backend de maneira legível (nome do arquivo e página, quando disponíveis).
-- [ ] Tratar falhas de rede, resposta vazia, tempo de espera e indisponibilidade do servidor.
-- [ ] Verificar acessibilidade básica, responsividade e usabilidade da interface.
-- [ ] Ampliar `tests/test_api.py` e apoiar testes manuais de ponta a ponta.
+- [x] Revisar a estrutura atual de `static/index.html`, `css/style.css` e `js/app.js`.
+- [x] Definir com Murilo e David o contrato de `POST /api/chat`: campos enviados, resposta, identificador de sessão e formato de erros.
+- [x] Habilitar o campo de mensagem e implementar envio assíncrono com `fetch` para a API.
+- [x] Exibir mensagens do usuário e do assistente, estado de carregamento e mensagens de erro.
+- [x] Preservar o `session_id` durante a conversa para que o backend possa manter o contexto.
+- [x] Exibir fontes documentais retornadas pelo backend de maneira legível (nome do arquivo e página, quando disponíveis).
+- [x] Tratar falhas de rede, resposta vazia, tempo de espera e indisponibilidade do servidor.
+- [ ] Verificar acessibilidade básica, responsividade e usabilidade da interface. Há marcação semântica e um teste estático (`tests/test_frontend_estatico.py`), mas não há auditoria de acessibilidade nem teste de usabilidade registrados.
+- [x] Ampliar `tests/test_api.py` e apoiar testes manuais de ponta a ponta.
 - [ ] Executar cenários de aceitação: triagem de pedido, consulta documental, pergunta sem evidência e relatório de produtor.
+- [ ] Atualizar as capturas de `docs/evidencias/` e o `docs/Relatorio_Frontend_Raquel.docx` para o visual atual (fundo branco, acento verde).
+- [ ] Executar o roteiro de `docs/TESTE_USABILIDADE.md` e registrar os resultados.
+- [ ] Revisar o novo visual (boas-vindas centralizadas e folhas decorativas) em telas pequenas.
+- [ ] Verificar na interface a exibição dos alertas estruturados (`alerts`), que o backend agora envia.
 
 **Entregas principais:** chat conectado ao backend; apresentação de fontes e alertas; estados de erro/carregamento; checklist de QA e evidências de teste.
 
@@ -461,15 +492,17 @@ Para evitar que cada integrante implemente uma parte com formatos incompatíveis
 # 11. Pontos de atenção
 
 - A pasta `.venv` não deve ser compartilhada nem versionada. Cada integrante deve criar seu próprio ambiente virtual a partir do `pyproject.toml`.
-- O arquivo `.env` contém configurações locais e possíveis credenciais. Não deve ser enviado ao Git. O arquivo apropriado para compartilhar é `.env.example`. Se uma chave real tiver sido exposta, ela deve ser revogada e substituída.
-- Os arquivos reais da cooperativa são necessários para finalizar schemas, regras e testes realistas.
-- Os controllers de chat, pedidos, documentos e produtores precisam ser implementados e registrados na aplicação.
-- Os agentes, prompts, ferramentas, serviços de negócio, repositórios e pipeline RAG precisam receber implementação funcional.
-- O GCS ainda precisa de implementação antes de ser utilizado. A primeira versão deve continuar funcionando com armazenamento local.
-- A existência de arquivos de teste não significa que os cenários foram validados. Cada funcionalidade deve ter testes executáveis.
-- A sessão em memória perde o contexto ao reiniciar o servidor. A primeira versão deve documentar essa limitação.
-- Não há autenticação na primeira versão, salvo se a equipe decidir incluí-la como requisito adicional.
-- Pedidos processados não devem ser considerados persistidos enquanto não houver uma estratégia de gravação definida e implementada.
+- O arquivo `.env` contém configurações locais e possíveis credenciais. Não deve ser enviado ao Git. O arquivo apropriado para compartilhar é `.env.example`, que deve permanecer sem valores secretos. Se uma chave real tiver sido exposta, ela deve ser revogada e substituída.
+- Os arquivos reais da cooperativa estão em `data/` e foram usados nos schemas, regras e testes. O índice vetorial (`.vectorstore/`) não é versionado e precisa ser construído em cada ambiente.
+- O chat funciona pela rota `POST /api/chat`. Os controllers opcionais de pedidos, documentos e produtores continuam como esqueleto e não são necessários para o fluxo atual.
+- Agentes, prompts, ferramentas, serviços, repositórios e pipeline RAG estão implementados. A validação com o Gemini real foi manual (uma execução por caso): 15 pedidos, 11 casos de documentos/produtores e 5 cenários anteriores. `adk eval` com o modelo real não foi executado.
+- O GCS ainda não tem implementação. A primeira versão funciona com armazenamento local.
+- A existência de testes não substitui a validação com LLM real. Rode a suíte com `GOOGLE_API_KEY` vazia para que nenhum teste chame a API.
+- A sessão em memória perde o contexto ao reiniciar o servidor. Um `session_id` desconhecido inicia uma nova sessão.
+- Não há autenticação. As recusas de consultas em primeira pessoa de produtores são um cuidado dos prompts, não um controle de acesso.
+- Pedidos triados não são gravados: a persistência depende de decisão da equipe.
+- O Free Tier da API Gemini tem limite baixo de requisições por minuto (observado cerca de 15); acima dele o chat responde 429.
+- Prazo do trabalho: entrega da arquitetura em 19/11/2026 (alterações depois dessa data são desconsideradas) e demonstração em 20–21/11/2026.
 
 ---
 

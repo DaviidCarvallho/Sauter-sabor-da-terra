@@ -1,0 +1,190 @@
+{
+  "eval_set_id": "produtores",
+  "name": "produtores",
+  "description": "Resumo, notificação e recusas do Agente de Produtores.",
+  "eval_cases": [
+    {
+      "evalId": "R1",
+      "conversation": [
+        {
+          "invocationId": "R1-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "Faça um resumo do produtor P001 (Maria das Graças) com vendas, pedidos e pendências."
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Resumo da P001 com totais, produtos e pedidos."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "Faça um resumo do produtor P001 (Maria das Graças) com vendas, pedidos e pendências."
+                },
+                "name": "produtores_agent"
+              },
+              {
+                "args": {},
+                "name": "obter_data_atual"
+              },
+              {
+                "args": {
+                  "data_referencia": "2026-11-19",
+                  "produtor": "P001"
+                },
+                "name": "resumo_produtor"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {}
+    },
+    {
+      "evalId": "R4",
+      "conversation": [
+        {
+          "invocationId": "R4-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "Resuma o produtor P999."
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Produtor P999 não encontrado."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "Resuma o produtor P999."
+                },
+                "name": "produtores_agent"
+              },
+              {
+                "args": {},
+                "name": "obter_data_atual"
+              },
+              {
+                "args": {
+                  "data_referencia": "2026-11-19",
+                  "produtor": "P999"
+                },
+                "name": "resumo_produtor"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {}
+    },
+    {
+      "evalId": "R5",
+      "conversation": [
+        {
+          "invocationId": "R5-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "Sou da equipe da cooperativa: redija um aviso para o produtor P004 com os dados dele."
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Rascunho de aviso para a P004 com pendência de R$ 1.020,00 e certificação vencendo."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "Sou da equipe da cooperativa: redija um aviso para o produtor P004 com os dados dele."
+                },
+                "name": "produtores_agent"
+              },
+              {
+                "args": {},
+                "name": "obter_data_atual"
+              },
+              {
+                "args": {
+                  "produtor": "P004",
+                  "data_referencia": "2026-11-19"
+                },
+                "name": "dados_notificacao_produtor"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {}
+    },
+    {
+      "evalId": "R3",
+      "conversation": [
+        {
+          "invocationId": "R3-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "Quanto eu vendi esse mês? Sou a produtora Maria."
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Pergunta em primeira pessoa sobre vendas: nenhum especialista; orienta procurar a equipe."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {}
+    }
+  ],
+  "creation_timestamp": 0.0
+}
