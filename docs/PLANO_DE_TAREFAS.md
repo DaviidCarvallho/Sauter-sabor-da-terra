@@ -321,16 +321,16 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 
 ### Responsabilidades e tarefas
 
-- [ ] Receber e conferir os documentos reais de certificações, contratos e fichas técnicas; registrar arquivos ausentes ou ilegíveis.
-- [ ] Implementar `repositories/document_repository.py` para listar documentos e disponibilizar seus bytes via Storage.
-- [ ] Implementar `rag/document_loader.py` para extrair texto de PDF/DOCX e preservar nome do arquivo, tipo de documento e página.
-- [ ] Implementar `rag/chunker.py` com tamanho e sobreposição configuráveis; testar a divisão nos documentos reais.
-- [ ] Implementar `rag/vector_store.py` para persistir e consultar embeddings no ChromaDB.
-- [ ] Escolher e documentar o modelo de embeddings compatível com o ambiente Gemini/Google, após verificar disponibilidade e requisitos.
-- [ ] Implementar `rag/ingestion.py` como processo separado e repetível de indexação; evitar reindexar a cada pergunta.
-- [ ] Implementar `rag/retriever.py` para busca top-k, score e filtros por metadados quando úteis.
+- [x] Receber e conferir os documentos reais de certificações, contratos e fichas técnicas; registrar arquivos ausentes ou ilegíveis.
+- [x] Implementar `repositories/document_repository.py` para listar documentos e disponibilizar seus bytes via Storage.
+- [x] Implementar `rag/document_loader.py` para extrair texto de PDF/DOCX e preservar nome do arquivo, tipo de documento e página.
+- [x] Implementar `rag/chunker.py` com tamanho e sobreposição configuráveis; testar a divisão nos documentos reais.
+- [x] Implementar `rag/vector_store.py` para persistir e consultar embeddings no ChromaDB.
+- [x] Escolher e documentar o modelo de embeddings compatível com o ambiente Gemini/Google, após verificar disponibilidade e requisitos.
+- [x] Implementar `rag/ingestion.py` como processo separado e repetível de indexação; evitar reindexar a cada pergunta.
+- [x] Implementar `rag/retriever.py` para busca top-k, score e filtros por metadados quando úteis.
 - [ ] Trabalhar com `documento_service.py` e `documentos_agent.py` para devolver evidências e fontes em formato consistente.
-- [ ] Criar testes: documento encontrado, fonte/página preservadas, pergunta sem evidência e ausência de alucinação.
+- [x] Criar testes: documento encontrado, fonte/página preservadas, pergunta sem evidência e ausência de alucinação.
 
 **Entregas principais:** documentos carregados; índice ChromaDB criado; consulta semântica funcional; trechos recuperados com fonte/página; testes do RAG.
 
