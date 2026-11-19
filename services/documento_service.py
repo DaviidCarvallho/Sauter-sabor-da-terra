@@ -42,6 +42,14 @@ DISTANCIA_MAXIMA = 0.30
 TOP_K_PADRAO = 5
 TOP_K_MAXIMO = 8
 
+# O DocumentLoader grava page=1 para .txt, mas arquivo de texto não tem páginas. O contrato
+# (docs/CONTRATOS_ARQUITETURAIS.md, 5.4) manda não inventar número: para .txt a página é omitida.
+EXTENSOES_SEM_PAGINA = (".txt",)
+
+
+def _pagina_citavel(source: str, page: int | None) -> int | None:
+    return None if source.lower().endswith(EXTENSOES_SEM_PAGINA) else page
+
 
 class DocumentoService:
     def __init__(self, retriever: Retriever | None = None) -> None:
@@ -79,7 +87,7 @@ class DocumentoService:
                 content=c.content,
                 source=str(c.metadata.get("source", "desconhecido")),
                 document_type=c.metadata.get("document_type"),
-                page=c.metadata.get("page"),
+                page=_pagina_citavel(str(c.metadata.get("source", "")), c.metadata.get("page")),
                 score=round(c.score, 4),
             )
             for c in encontrados
