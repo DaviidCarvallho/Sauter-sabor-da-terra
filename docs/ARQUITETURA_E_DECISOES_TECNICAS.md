@@ -320,6 +320,8 @@ Cada repositório lê um arquivo via `Storage`, converte as linhas em modelos e 
 
 ## 11. Persistência local e evolução para Google Cloud Storage
 
+> A proposta detalhada de migração (serviços, bucket, sessões, índice, segurança, custos e etapas) está em [`ARQUITETURA_GOOGLE_CLOUD_E_MIGRACAO.md`](ARQUITETURA_GOOGLE_CLOUD_E_MIGRACAO.md). Ela é **proposta**; nada foi implementado.
+
 Hoje tudo é local: `LocalStorage` lê `DATA_DIR` e **recusa chaves que saiam da raiz** (`../.env`); o índice vive em `.vectorstore/`; as sessões ficam em memória; **nenhum dado é gravado** (pedidos triados e notificações não são persistidos).
 
 Os componentes pedem arquivos por **chave lógica** (`contratos/arquivo.txt`) à interface `Storage` (`storage/base.py`: `exists`, `read_bytes`, `read_text`, `list_keys`). `STORAGE_BACKEND=gcs` selecionaria o `GCSStorage`, que **hoje é um esqueleto** e levanta `NotImplementedError`. Migrar para a nuvem envolve quatro peças diferentes (`ESTRUTURA.md`, seção 7):
