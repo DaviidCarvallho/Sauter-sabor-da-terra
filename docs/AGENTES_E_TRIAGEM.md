@@ -63,6 +63,7 @@ Todas devolvem um dicionário com `status` (`"sucesso"` ou `"erro"`). Erros espe
 - `hoje`, `amanhã`, `depois de amanhã` são exatos. Dia da semana → próxima ocorrência futura.
 - **Ambíguo** (a ferramenta não escolhe data; o agente pergunta): `semana que vem`, `o quanto antes` e o mesmo dia da semana da referência (ex.: "quarta" numa quarta).
 - Data sem ano já passada vai para o ano seguinte.
+- Data ISO (`AAAA-MM-DD`) é aceita: é o formato que as ferramentas devolvem e que o modelo reaproveita ao reprocessar um pedido (achado da validação real).
 
 ### Urgência
 `urgente` (entrega em até 2 dias **ou** o comprador declarou urgência), `normal` (3 a 14 dias), `planejado` (mais de 14 dias), `indefinida` (sem prazo ou prazo no passado).
@@ -73,7 +74,7 @@ Todas devolvem um dicionário com `status` (`"sucesso"` ou `"erro"`). Erros espe
 > **Decisão proposta, a validar com Murilo/equipe.** Os dados não trazem tipo nem urgência (`docs/DADOS.md`, seção 8). O vocabulário de tipo foi derivado das 15 mensagens de `pedidos.json` (compras, cotações PED-007/008/009/013, recorrência PED-010/011, e mensagens que não são compra PED-012/014/015) e os limiares de urgência (2 e 14 dias) são uma proposta. Estão em constantes (`TIPOS_PEDIDO`, `LIMITE_URGENTE_DIAS`, `LIMITE_PLANEJADO_DIAS`) para ajuste fácil. O `PedidoEstruturado` mantém `tipo`/`urgencia` como `str`, sem enum fechado, como combinado com Arthur.
 
 ### Informações ausentes (`informacoes_ausentes`)
-Somam-se às do `PedidoService` (`comprador`, `prazo`, `quantidade:<produto>`): `unidade:<produto>`, `prazo_ambiguo`, `prazo_nao_reconhecido`, `prazo_no_passado` e `capacidade_nao_comprovada:<produto>` (sem limite explícito nem lote histórico, o sistema não afirma capacidade).
+Somam-se às do `PedidoService` (`comprador`, `prazo`, `quantidade:<produto>`): `unidade:<produto>`, `prazo_ambiguo`, `prazo_nao_reconhecido`, `prazo_no_passado` e `conversao_unidade:<produto>` e `capacidade_nao_comprovada:<produto>` (sem limite explícito nem lote histórico, o sistema não afirma capacidade). Quando a unidade pedida difere da tabela de preços (ex.: "caixas" × kg), não há fator de conversão nos dados: o item fica **sem valor estimado** e a unidade informada é preservada, em vez de tratar "10 caixas" como "10 kg".
 
 Safra, capacidade, preço, produtores elegíveis, certificação e restrições continuam no `PedidoService` (Arthur).
 
@@ -97,7 +98,7 @@ Copy-Item .env.example .env     # preencher GOOGLE_API_KEY
 ```
 
 - `GOOGLE_API_KEY`: chave do Google AI Studio (Gemini API). Não use credenciais do Google Cloud/Vertex junto com ela.
-- `MODEL=gemini-3.5-flash-lite`: identificador confirmado na documentação oficial (estável/GA). **A chamada de teste real ao Gemini e o limite do Free Tier não foram verificados** (sem chave na máquina de desenvolvimento); confirme antes da demonstração.
+- `MODEL=gemini-3.5-flash-lite`: identificador confirmado na documentação oficial (estável/GA) e **validado com chamadas reais** (seção 9). Free Tier: o modelo tem camada gratuita ("Free of charge"); os limites numéricos (RPM/TPM/RPD) não estão nas docs, só no painel https://aistudio.google.com/rate-limit. Na prática, cada mensagem custa de 4 a 6 chamadas ao modelo e um rajada de ~15 chamadas em cerca de 1 minuto resultou em `429 RESOURCE_EXHAUSTED`; com 30 s entre mensagens não houve 429 (uma resposta demorou ~104 s, provável backoff interno do cliente).
 - Não ajustamos `temperature`, `top_p` nem `top_k`: nos Gemini 3.x o Google recomenda os valores padrão.
 - `.env` está no `.gitignore`; a chave nunca é registrada em log.
 
@@ -115,9 +116,25 @@ Os testes de agentes usam um **LLM simulado** (`tests/llm_simulado.py`): o `Runn
 
 ## 8. Limitações conhecidas
 
-- Qualidade da interpretação de pedidos com o Gemini real **não foi medida** (sem chave durante o desenvolvimento). Recomenda-se rodar os 15 pedidos de `pedidos.json` pelo chat e conferir com `docs/QA_CHECKLIST.md`.
+- A validação real cobriu **6 turnos / 5 cenários** (seção 9), não os 15 pedidos de `pedidos.json`. Recomenda-se rodar os demais pela interface e conferir com `docs/QA_CHECKLIST.md`.
+- Free Tier com limite de requisições por minuto baixo: uma demonstração com várias mensagens seguidas pode receber 429 (o `chat_service` devolve 502 nesse caso). Considere ativar o faturamento/outro tier ou espaçar as mensagens.
 - Agentes de Documentos e de Produtores dependem de Rawan e Arthur; até lá o assistente informa que não responde esses assuntos.
 - Sessões em memória (reiniciar o servidor apaga o contexto) e sem autenticação.
 - O resumo das ferramentas internas do especialista não aparece nos eventos do orquestrador (o `AgentTool` executa um runner aninhado); por isso `agents_used` lista os especialistas, não as ferramentas.
 - Capacidade é uma referência (limite explícito ou maior lote histórico), não garantia de produção futura.
 - Pedidos triados não são gravados nem alocados.
+
+## 9. Validação real com o Gemini (`gemini-3.5-flash-lite`)
+
+Executada em 19/11/2026 pelo `ChatService` (orquestrador, `AgentTool` e ferramentas reais). Ferramentas registradas por um espião com `functools.wraps` (sem ele o ADK enxerga as ferramentas sem parâmetros e o teste é inválido).
+
+| # | Mensagem | Resultado observado |
+|---|---|---|
+| 1 | "…Mercado Bom Preço precisa de 100 kg de tomate para sexta-feira." | Extraiu comprador/produto/100 kg; "sexta" → 20/11 por ferramenta; urgência `urgente`; alerta de capacidade (referência 80 kg); resposta com preço, produtor elegível e alertas; sem oferecer "anotar". |
+| 2 | "30kg de queijo coalho e umas caixas de goiaba pra sexta (Restaurante Raízes)" | Queijo 30 kg com valor; goiaba **sem quantidade** e unidade "caixas" sem valor; perguntou quantas caixas e o peso de cada. |
+| 2b | Follow-up: "São 10 caixas de goiaba." | Manteve o contexto (comprador e prazo); 10 caixas **sem valor** e pediu o peso por caixa. |
+| 3 | "50kg de mirtilo orgânico pra semana que vem (Sorveteria Tropical)" | Prazo **ambíguo** (pediu a data); alerta `fora_de_safra`; produtora elegível. |
+| 4 | PED-003 (coloquial, "uns 15kg", "urgente pra amanhã", pede PIX) | Comprador ausente → perguntou; queijo vago → pediu especificação; mel de jandaíra encontrado; recusou PIX; urgência `urgente` (20/11). |
+| 5 | PED-012 (produtora pergunta saldo; cita conta bancária) | **Nenhum especialista acionado**; explicou que não consulta dados financeiros individuais; não repetiu a conta bancária. |
+
+Achados corrigidos a partir desta validação: resposta final omitia urgência/produtores e oferecia "anotar" (prompts); data ISO não reconhecida; alerta falso de unidade para "maços"/"dúzias" (uma linha em `pedido_service.py`); "caixas" valorizada como kg.
