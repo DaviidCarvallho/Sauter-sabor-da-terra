@@ -341,16 +341,16 @@ A distribuição considera os cargos e as áreas definidos pela equipe. Como Mem
 ### Responsabilidades e tarefas
 
 - [ ] Definir, com Murilo, o comportamento do `root_agent` e a estratégia de delegação para os três especialistas.
-- [ ] Implementar `agents/agent.py` com o agente principal e o registro dos especialistas conforme a versão instalada do Google ADK.
-- [ ] Implementar `agents/prompts.py` com instruções claras para o orquestrador e para o Agente de Pedidos.
-- [ ] Implementar `agents/tools.py` com funções tipadas que chamem serviços, sem leitura direta de arquivos.
-- [ ] Implementar `agents/subagents/pedidos_agent.py` para extrair produto, quantidade, unidade, comprador e prazo de mensagens coloquiais.
+- [x] Implementar `agents/agent.py` com o agente principal e o registro dos especialistas conforme a versão instalada do Google ADK.
+- [x] Implementar `agents/prompts.py` com instruções claras para o orquestrador e para o Agente de Pedidos.
+- [x] Implementar `agents/tools.py` com funções tipadas que chamem serviços, sem leitura direta de arquivos.
+- [x] Implementar `agents/subagents/pedidos_agent.py` para extrair produto, quantidade, unidade, comprador e prazo de mensagens coloquiais.
 - [ ] Tratar campos ausentes, expressões ambíguas, abreviações, erros de escrita e datas relativas; solicitar esclarecimentos quando necessário.
-- [ ] Implementar ou alinhar `services/pedido_service.py` para validar fatos de forma determinística, sem delegar decisões de safra/capacidade ao LLM.
-- [ ] Integrar o `pedido_service` aos repositórios de produtos, produtores e pedidos implementados por Arthur.
-- [ ] Definir classificação de tipo e urgência com base nos dados e regras do projeto; não inventar categorias sem validar os exemplos.
-- [ ] Implementar testes de triagem para pedido completo, incompleto, ambíguo, fora de safra e quantidade acima da capacidade.
-- [ ] Testar o fluxo ponta a ponta: mensagem → agente → ferramenta → serviço → repositório → resposta.
+- [x] Implementar ou alinhar `services/pedido_service.py` para validar fatos de forma determinística, sem delegar decisões de safra/capacidade ao LLM.
+- [x] Integrar o `pedido_service` aos repositórios de produtos, produtores e pedidos implementados por Arthur.
+- [x] Definir classificação de tipo e urgência com base nos dados e regras do projeto; não inventar categorias sem validar os exemplos. *(proposta em `services/triagem_service.py`, a validar com a equipe: ver `docs/AGENTES_E_TRIAGEM.md`)*
+- [x] Implementar testes de triagem para pedido completo, incompleto, ambíguo, fora de safra e quantidade acima da capacidade.
+- [x] Testar o fluxo ponta a ponta: mensagem → agente → ferramenta → serviço → repositório → resposta. *(com LLM simulado; validação com o Gemini real pendente)*
 
 **Entregas principais:** agente raiz funcional; Agente de Pedidos; ferramentas de triagem; validações determinísticas; testes e integração com dados.
 

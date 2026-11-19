@@ -32,15 +32,16 @@ sabor-da-terra/
 ├── pyproject.toml                        [OK] Dependências e config do pytest
 ├── README.md                             [OK] Apresentação do projeto
 ├── agents/                               [OK] Agentes do Google ADK (isolado da web)
-│   ├── agent.py                              [ESQ] root_agent: orquestrador
-│   ├── prompts.py                            [ESQ] Instruções dos agentes
-│   ├── tools.py                              [ESQ] Ferramentas que chamam serviços
+│   ├── agent.py                              [OK] root_agent: orquestrador (AgentTool)
+│   ├── modelo.py                             [OK] Escolha do modelo Gemini
+│   ├── prompts.py                            [OK] Instruções dos agentes
+│   ├── tools.py                              [OK] Ferramentas de pedidos (documentos e produtores pendentes)
 │   └── subagents/                            [OK] Especialistas
 │       ├── documentos_agent.py                   [ESQ] Agente de Documentos
-│       ├── pedidos_agent.py                      [ESQ] Agente de Pedidos
+│       ├── pedidos_agent.py                      [OK] Agente de Pedidos
 │       └── produtores_agent.py                   [ESQ] Agente de Produtores
 ├── api/                                  [OK] Camada HTTP
-│   ├── chat_controller.py                    [ESQ] POST /api/chat
+│   ├── chat_controller.py                    [OK] POST /api/chat
 │   ├── documentos_controller.py              [ESQ] Rotas de documentos (opcional)
 │   ├── health_controller.py                  [OK] GET /api/health
 │   ├── pedidos_controller.py                 [ESQ] Rotas de pedidos (opcional)
@@ -59,7 +60,7 @@ sabor-da-terra/
 ├── docs/                                 [OK] Documentação
 │   └── ESTRUTURA.md                          [OK] Este documento
 ├── models/                               [OK] Contratos de dados (Pydantic)
-│   ├── chat_model.py                         [ESQ] Requisição/resposta do chat
+│   ├── chat_model.py                         [OK] Requisição/resposta do chat
 │   ├── documento_model.py                    [ESQ] Trecho, fonte e resposta documental
 │   ├── health_model.py                       [OK] Resposta do health
 │   ├── pedido_model.py                       [ESQ] Pedido bruto e estruturado
@@ -81,7 +82,8 @@ sabor-da-terra/
 │   ├── produtor_repository.py                [ESQ] produtores.csv
 │   └── storage_repository.py                 [ESQ] Parsing genérico de CSV/JSON
 ├── services/                             [OK] Regras de negócio
-│   ├── chat_service.py                       [ESQ] Runner do ADK e sessão
+│   ├── chat_service.py                       [OK] Runner do ADK e sessão
+│   ├── triagem_service.py                    [OK] Prazo, urgência, tipo e ausências da triagem
 │   ├── documento_service.py                  [ESQ] Resposta com fontes e lotes
 │   ├── pedido_service.py                     [ESQ] Validações da triagem
 │   ├── produtor_service.py                   [ESQ] Cadastro, pedidos e financeiro
@@ -179,7 +181,7 @@ flowchart LR
 | Arquivo | Responsabilidade |
 |---|---|
 | `health_controller.py` `[OK]` | `GET /api/health`: verifica se a aplicação está no ar |
-| `chat_controller.py` `[ESQ]` | `POST /api/chat`: porta de entrada da conversa |
+| `chat_controller.py` `[OK]` | `POST /api/chat`: porta de entrada da conversa |
 | `pedidos_controller.py` `[ESQ]` | Rotas REST de pedidos. **Opcional**: só se a interface precisar |
 | `documentos_controller.py` `[ESQ]` | Consulta documental direta e reindexação. **Opcional** |
 | `produtores_controller.py` `[ESQ]` | Consulta de produtores e resumos. **Opcional** |
@@ -192,7 +194,7 @@ flowchart LR
 | Arquivo | Responsabilidade |
 |---|---|
 | `health_model.py` `[OK]` | Resposta do `/api/health` |
-| `chat_model.py` `[ESQ]` | Requisição e resposta do chat (usuário, sessão, mensagem, agentes acionados) |
+| `chat_model.py` `[OK]` | Requisição e resposta do chat (user_id, sessão, mensagem; answer, agentes acionados, fontes) |
 | `pedido_model.py` `[ESQ]` | Pedido bruto e pedido estruturado: itens, prazo, comprador, tipo, urgência, alertas |
 | `produtor_model.py` `[ESQ]` | Produtor e transação financeira |
 | `produto_model.py` `[ESQ]` | Produto, sazonalidade, preço e lote |
@@ -209,7 +211,8 @@ Os campos dos modelos de dados serão definidos **a partir das colunas reais** d
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `chat_service.py` `[ESQ]` | Liga a API ao agente: executa o Runner do ADK mantendo a sessão |
+| `chat_service.py` `[OK]` | Liga a API ao agente: executa o Runner do ADK mantendo a sessão |
+| `triagem_service.py` `[OK]` | Resolve prazos, classifica urgência e tipo e registra informações ausentes; usa o `pedido_service` |
 | `pedido_service.py` `[ESQ]` | Validações da triagem: safra, capacidade, urgência, tipo, ambiguidades |
 | `documento_service.py` `[ESQ]` | Resposta documental com fontes; rastreabilidade de lotes; "evidência insuficiente" |
 | `produtor_service.py` `[ESQ]` | Cadastro, pedidos e financeiro de um produtor |
@@ -223,8 +226,8 @@ Os campos dos modelos de dados serão definidos **a partir das colunas reais** d
 | Arquivo | Responsabilidade |
 |---|---|
 | `agent.py` `[ESQ]` | `root_agent`: orquestrador que registra os 3 especialistas como `AgentTool` |
-| `prompts.py` `[ESQ]` | Instruções dos agentes, separadas do código |
-| `tools.py` `[ESQ]` | Funções Python tipadas e com docstring que o modelo pode chamar. Finas: chamam um serviço |
+| `prompts.py` `[OK]` | Instruções dos agentes, separadas do código |
+| `tools.py` `[OK]` | Funções Python tipadas e com docstring que o modelo pode chamar. Finas: chamam um serviço |
 | `subagents/pedidos_agent.py` `[ESQ]` | Interpreta pedidos em português coloquial |
 | `subagents/documentos_agent.py` `[ESQ]` | Responde com base nos documentos, citando fontes |
 | `subagents/produtores_agent.py` `[ESQ]` | Gera resumos e redige notificações |

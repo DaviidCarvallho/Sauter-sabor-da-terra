@@ -133,7 +133,7 @@ O `.env` está no `.gitignore` e **nunca** deve ser enviado ao GitHub.
 | 1 | Fundação: FastAPI, configuração, `/api/health`, storage local, frontend mínimo | Concluída |
 | 2 | Estrutura completa e documentação | Concluída |
 | 3 | Dados e repositórios | Pendente (aguarda os arquivos de `data/`) |
-| 4 | Orquestrador, Agente de Pedidos e API de chat | Pendente |
+| 4 | Orquestrador, Agente de Pedidos e API de chat | Implementada (testes com LLM simulado; validação com Gemini real pendente). Ver [`docs/AGENTES_E_TRIAGEM.md`](docs/AGENTES_E_TRIAGEM.md) |
 | 5 | RAG e Agente de Documentos | Pendente |
 | 6 | Agente de Produtores, relatórios e notificações | Pendente |
 | 7 | Interface de chat | Pendente |

@@ -239,9 +239,11 @@ class PedidoService:
         alertas: list[AlertaTriagem] = []
 
         if item.unidade_informada and unidade_oficial:
-            u_norm = SINONIMOS_UNIDADE.get(
-                normalizar_texto(item.unidade_informada),
-                normalizar_texto(item.unidade_informada),
+            u_norm = normalizar_texto(
+                SINONIMOS_UNIDADE.get(
+                    normalizar_texto(item.unidade_informada),
+                    normalizar_texto(item.unidade_informada),
+                )
             )
             if u_norm != normalizar_texto(unidade_oficial):
                 alertas.append(

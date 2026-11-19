@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -70 420 700" fill="none" aria-hidden="true">
+  <defs>
+    <g id="folha">
+      <path d="M0 0C14-26 52-30 80 0C52 30 14 26 0 0Z"/>
+      <path d="M4 0H72" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.6" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <!-- haste principal -->
+  <path d="M40 610C120 490 140 320 330 30" stroke="#2f8049" stroke-width="4" stroke-linecap="round"/>
+  <!-- hastes secundárias -->
+  <path d="M96 470C150 450 190 455 232 420" stroke="#2f8049" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M150 340C110 320 80 322 44 292" stroke="#2f8049" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- folhas da haste principal -->
+  <g fill="#2f8049">
+    <use href="#folha" transform="translate(62 540) rotate(-152)"/>
+    <use href="#folha" transform="translate(72 524) rotate(-22) scale(1.05)"/>
+    <use href="#folha" transform="translate(112 452) rotate(-168) scale(.95)"/>
+    <use href="#folha" transform="translate(135 392) rotate(-168) scale(.9)"/>
+    <use href="#folha" transform="translate(165 318) rotate(-176) scale(.85)"/>
+    <use href="#folha" transform="translate(228 205) rotate(-182) scale(.78)"/>
+    <use href="#folha" transform="translate(262 150) rotate(-62) scale(.8)"/>
+    <use href="#folha" transform="translate(330 30) rotate(-98) scale(.72)"/>
+  </g>
+  <g fill="#6fb487">
+    <use href="#folha" transform="translate(88 478) rotate(-34) scale(1)"/>
+    <use href="#folha" transform="translate(128 400) rotate(-44) scale(.92)"/>
+    <use href="#folha" transform="translate(180 296) rotate(-56) scale(.88)"/>
+    <use href="#folha" transform="translate(214 246) rotate(-70) scale(.8)"/>
+    <use href="#folha" transform="translate(284 118) rotate(-150) scale(.72)"/>
+  </g>
+  <!-- folhas das hastes secundárias -->
+  <g fill="#a8d5b5">
+    <use href="#folha" transform="translate(150 450) rotate(-12) scale(.8)"/>
+    <use href="#folha" transform="translate(190 454) rotate(-38) scale(.7)"/>
+    <use href="#folha" transform="translate(232 420) rotate(-52) scale(.62)"/>
+    <use href="#folha" transform="translate(110 322) rotate(-196) scale(.7)"/>
+    <use href="#folha" transform="translate(76 322) rotate(-212) scale(.62)"/>
+    <use href="#folha" transform="translate(44 292) rotate(-226) scale(.55)"/>
+  </g>
+</svg>
