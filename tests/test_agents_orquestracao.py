@@ -56,8 +56,8 @@ def _roteiro_pedido(final="Resposta final."):
 def test_root_agent_registra_especialistas_como_agent_tool():
     root = construir_root_agent(ScriptedLlm())
     assert all(isinstance(t, AgentTool) for t in root.tools)
-    assert [t.name for t in root.tools] == ["pedidos_agent", "documentos_agent"]
-    assert "pedidos_agent" in root.instruction and "documentos_agent" in root.instruction
+    assert [t.name for t in root.tools] == ["pedidos_agent", "documentos_agent", "produtores_agent"]
+    assert all(n in root.instruction for n in ("pedidos_agent", "documentos_agent", "produtores_agent"))
     assert not root.sub_agents  # contrato: AgentTool, não sub_agents
 
 
@@ -68,7 +68,7 @@ def test_root_agent_do_modulo_existe_para_adk_web():
 def test_especialista_ausente_nao_derruba_o_orquestrador(monkeypatch):
     monkeypatch.setattr(agente_mod, "ESPECIALISTAS", (
         ("agents.subagents.pedidos_agent", "criar_pedidos_agent"),
-        ("agents.subagents.produtores_agent", "criar_produtores_agent"),  # ainda não implementado
+        ("agents.subagents.produtores_agent", "criar_inexistente_agent"),  # fábrica ausente
     ))
     root = construir_root_agent(ScriptedLlm())
     assert [t.name for t in root.tools] == ["pedidos_agent"]
@@ -140,7 +140,7 @@ async def test_requisicao_do_orquestrador_contem_instrucao_e_apenas_ferramentas_
     runner, sessao = await _montar(llm)
     await conversar(runner, "u1", sessao.id, "Oi")
     req = llm.requisicoes[0]
-    assert nomes_das_ferramentas(req) == ["documentos_agent", "pedidos_agent"]
+    assert nomes_das_ferramentas(req) == ["documentos_agent", "pedidos_agent", "produtores_agent"]
     assert "Sabor da Terra" in instrucao_da_requisicao(req)
 
 
