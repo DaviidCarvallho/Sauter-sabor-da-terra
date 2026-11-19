@@ -181,3 +181,15 @@ Observações: uma pergunta sobre a "política de devolução do Supermercado Ex
 ### 9.3 Índice e limiar do RAG
 
 Índice construído em 19/11/2026 com `python -m rag.ingestion`: 20 documentos, 52 trechos, nenhuma falha. Distância do melhor trecho: 12 perguntas com resposta nos documentos ficaram entre 0,20 e 0,27; 6 perguntas sem relação com a cooperativa ficaram entre 0,36 e 0,42. O limiar 0,30 separa os dois grupos nessa amostra, que é pequena; o tamanho dos chunks (1000/150) não foi comparado com outros valores. Em duas perguntas o primeiro trecho não era do documento esperado (hortaliças × Mercado Bom Preço; inspeção da ADAGRO), embora fosse relacionado.
+
+### 9.4 Teste final: uma requisição por agente
+
+Em 19/11/2026, com a chave de API do próprio `.env` (nunca registrada neste repositório), foi enviada **uma única requisição a cada especialista** pelo `ChatService` real (orquestrador, `AgentTool`, ferramentas, serviços, repositórios e índice RAG reais; só o relógio é o do computador). Foram 3 mensagens, espaçadas, sem repetição.
+
+| Agente | Mensagem | Trajetória observada | Resultado |
+|---|---|---|---|
+| Pedidos | "O Restaurante Raízes precisa de 30kg de queijo coalho e 10kg de manteiga de garrafa para o dia 25/11/2026." | `pedidos_agent` → `resolver_prazo_pedido`, `triar_pedido` | Prazo 25/11/2026, tipo `pedido_firme`, urgência `normal`, valores R$ 960,00 + R$ 450,00 = R$ 1.410,00 e produtores elegíveis; sem alertas |
+| Documentos | "Qual a temperatura de armazenamento do queijo coalho segundo a ficha técnica?" | `documentos_agent` → `consultar_documentos` | "2 °C a 8 °C", com a fonte `fichas_tecnicas/queijo_coalho.txt` (3 fontes em `sources`); confere com a ficha |
+| Produtores | "Faça um resumo do produtor P001 (Maria das Graças) com vendas, pedidos e pendências." | `produtores_agent` → `obter_data_atual`, `resumo_produtor` | Total R$ 1.090,00 (3 transações pagas), certificação vigente até 15/06/2027; o total confere com `financeiro.csv` |
+
+Isto confirma que cada agente é acionado, chama as ferramentas esperadas e responde com dados verificáveis. É uma amostra de uma execução por agente, não uma medição de qualidade.
