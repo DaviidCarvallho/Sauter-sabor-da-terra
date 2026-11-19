@@ -205,16 +205,15 @@ Plano de trabalho por integrante: [`docs/PLANO_DE_TAREFAS.md`](docs/PLANO_DE_TAR
 | [`docs/QA_CHECKLIST.md`](docs/QA_CHECKLIST.md), [`docs/TESTE_USABILIDADE.md`](docs/TESTE_USABILIDADE.md) | QA e usabilidade |
 | [`docs/ROTEIRO_DEMONSTRACAO.md`](docs/ROTEIRO_DEMONSTRACAO.md) | Roteiro da demonstração |
 
-## 17. Limitações e pendências
+## 17. Escopo e limitações
 
 - **Validação com o Gemini real é manual:** os 15 pedidos e 11 casos de documentos e produtores foram executados uma vez cada (ver `docs/AGENTES_E_TRIAGEM.md`, seção 9); não há medição automática de qualidade nem `adk eval` executado.
-- **Índice RAG não versionado:** cada máquina precisa executar `python -m rag.ingestion`. O limiar 0,30 foi conferido em poucas perguntas e os tamanhos de chunk não foram comparados.
+- **Índice RAG não versionado:** cada máquina precisa executar `python -m rag.ingestion`. O limiar 0,30 foi conferido em poucas perguntas e os tamanhos de chunk (1000/150) foram mantidos por decisão da equipe.
 - **Sessões em memória:** reiniciar o servidor perde o contexto; `session_id` desconhecido inicia uma nova sessão.
 - **Sem autenticação** nem controle de acesso; as recusas de consultas em primeira pessoa de produtores são feitas pelos prompts.
-- **Pedidos triados não são gravados.** A persistência depende de decisão da equipe.
-- **Conversões de unidade:** só dúzia ↔ unidade; maço, caixa etc. ficam sem valor estimado até a equipe decidir.
+- **Pedidos triados não são gravados** (decisão da equipe para a primeira versão).
+- **Conversões de unidade:** só dúzia ↔ unidade; maço, caixa etc. ficam sem valor estimado (decisão da equipe).
 - **Instabilidade do Gemini:** erros transitórios (503 "alta demanda") aparecem como falha 502 e exigem repetir a mensagem.
 - **Google Cloud Storage** e os controllers opcionais de pedidos, documentos e produtores são esqueletos.
-- **Nomes dos campos do chat** (`message`, `user_id`/`user`, `alerts`) aguardam confirmação do líder técnico.
-- **Evidências visuais** (`docs/evidencias/` e o relatório do frontend) são do visual anterior.
+- As capturas em `docs/evidencias/` e o relatório do frontend mostram o visual anterior (tema escuro).
 - Prazos: entrega da arquitetura em 19/11/2026; demonstração em 20 e 21/11/2026.

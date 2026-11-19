@@ -319,13 +319,13 @@ Os arquivos contêm dados que o assistente **não deve devolver no chat sem nece
 
 ---
 
-## 13. Decisões que dependem da equipe
+## 13. Decisões da equipe
 
 | # | Decisão | Quem decide com Arthur | Proposta | Situação no código (19/11/2026) |
 |---|---|---|---|---|
 | 1 | Data de referência para "atraso" e para validade de certificação | Murilão | Parâmetro do serviço, padrão `date.today()`, fixa nos testes | Implementado: os serviços aceitam `data_referencia` (padrão `date.today()`); os testes a fixam |
 | 2 | Regra de capacidade (não há dado) | David | Definir fonte: limites explícitos nas observações, ou maior volume histórico, ou alertar só onde há dado | Implementado (regra híbrida): limite explícito nas observações ou maior lote histórico; sem nenhum dos dois, a triagem registra `capacidade_nao_comprovada` |
-| 3 | Vocabulário de `tipo` e `urgência` do pedido | David | Partir da leitura da seção 8, e fechar depois de testar nos 15 pedidos | Proposta implementada em `services/triagem_service.py` (`TIPOS_PEDIDO`, limiares de urgência); **validação da equipe e teste nos 15 pedidos com o modelo real pendentes** |
+| 3 | Vocabulário de `tipo` e `urgência` do pedido | David | Partir da leitura da seção 8, e fechar depois de testar nos 15 pedidos | Proposta implementada em `services/triagem_service.py` (`TIPOS_PEDIDO`, limiares de urgência); confirmada em reunião da equipe (19/11/2026) e testada nos 15 pedidos com o modelo real |
 | 4 | Mapa de normalização de nomes de produto | David | Arquivo único no `produto_repository`, com testes (seção 7) | Implementado: `MAPA_NOMES_SAZONALIDADE` em `repositories/produto_repository.py` |
 | 5 | Unidade das quantidades | David, Rawan | Campo `quantidade` + `unidade` (seção 6) | Implementado: `quantidade` + `unidade`; unidade diferente da tabela gera `unidade_divergente` e o item fica sem valor estimado (não há fator de conversão), exceto dúzia ↔ unidade (fator 12), convertida com alerta informativo; a decisão sobre outras conversões (maço, caixa) continua com a equipe |
 | 6 | Ligação lote ↔ pedido | Rawan, David | Não depender de `pedido_id`; ligar por produtor + produto + data | Decisão mantida (não depende de `pedido_id`). **Nenhum agente consulta `lotes.csv` ainda** |
