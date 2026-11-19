@@ -543,7 +543,7 @@ O texto acima foi preservado. A tabela registra o que já está implementado em 
 | Services | `PedidoService`, `TriagemService`, `DocumentoService`, `ProdutorService`, `RelatorioService` retornam modelos Pydantic | Confirmar assinaturas (Murilo, Arthur) |
 | Repositories | Retornam modelos de `models/`; leitura só via `Storage` | — |
 | RAG | Metadados `source`, `document_type`, `page` e `chunk_index`. O loader grava `page = 1` para `.txt`; o `DocumentoService` omite a página de `.txt` para cumprir a seção 5.4 | Confirmar com Rawan se o loader deve passar a gravar `page = None` em `.txt` |
-| Chat | `user_id`/`message` → `answer`/`session_id`/`agents_used`/`sources`/`status` | Confirmar nomes definitivos (Murilo, Raquel) |
+| Chat | `user_id`/`message` → `answer`/`session_id`/`agents_used`/`sources`/`alerts`/`status` | Confirmar nomes definitivos (Murilo, Raquel) |
 | Sessões | `InMemorySessionService`; `session_id` desconhecido ou de outro usuário gera uma sessão nova | Persistência de sessões (futuro) |
 | Erros | `{"detail": "..."}` com 422, 429 (limite da IA), 503 (IA não configurada ou chave recusada) e 502 | — |
 | Logging | `utils/logger.py`; o conteúdo das mensagens nunca é registrado | Confirmar eventos e níveis (Murilo) |

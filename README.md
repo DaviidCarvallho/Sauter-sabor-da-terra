@@ -22,7 +22,7 @@ Princípio central: **o modelo de linguagem interpreta; o código verifica.** Al
 
 ## 2. Funcionalidades implementadas
 
-- **Chat** (`POST /api/chat`) com sessão em memória, lista de agentes usados e fontes documentais.
+- **Chat** (`POST /api/chat`) com sessão em memória, lista de agentes usados, fontes documentais e alertas estruturados (`alerts`) calculados pelo código.
 - **Agente de Pedidos:** interpreta pedido em português coloquial, resolve o prazo, classifica **tipo** e **urgência** e devolve alertas (fora de safra, quantidade acima da capacidade, unidade divergente, informação ausente ou ambígua).
 - **Agente de Documentos:** responde com base nos documentos da cooperativa via RAG, cita o arquivo (e a página, quando existe) e diz quando não há evidência.
 - **Agente de Produtores:** resumo de vendas, pedidos e pendências financeiras de um produtor e dados para redigir uma notificação.
@@ -73,6 +73,7 @@ Camadas: `api` → `chat_service` → `agents` → `tools` → `services` → `r
 | `static/` | Frontend |
 | `utils/` | Configuração e logging |
 | `tests/` | Testes automatizados (pytest) |
+| `evals/` | Conjuntos de avaliação do Google ADK (pedidos, documentos, produtores) |
 | `qa/` | Verificações de QA do frontend (`test_logica.js`, `mock_server.py`, `verificar_backend.py`) |
 | `docs/` | Documentação |
 
@@ -107,7 +108,7 @@ A triagem combina interpretação do modelo com verificações em código:
 - **Prazo:** data explícita prevalece; datas relativas são resolvidas com a data atual; prazo ambíguo gera pergunta ao usuário.
 - **Urgência:** `urgente` (até 2 dias ou sinalizada), `normal` (3 a 14 dias), `planejado` (mais de 14 dias) ou `indefinida`.
 - **Tipo:** `pedido_firme`, `cotacao`, `fornecimento_recorrente` ou `nao_e_pedido`.
-- **Verificações:** safra, capacidade (limite informado ou maior lote histórico) e valor estimado; quando as unidades divergem, o valor não é estimado.
+- **Verificações:** safra, capacidade (limite informado ou maior lote histórico) e valor estimado; quando as unidades divergem, o valor não é estimado. A única conversão automática é dúzia ↔ unidade (1 dúzia = 12 unidades).
 - **Ausências:** o que falta é listado (unidade, prazo, conversão de unidade, capacidade não comprovada).
 
 O vocabulário de tipo/urgência e os limiares são uma **proposta** que a equipe ainda deve validar.
@@ -117,7 +118,7 @@ O vocabulário de tipo/urgência e os limiares são uma **proposta** que a equip
 - Documentos em `data/certificacoes`, `data/contratos` e `data/fichas_tecnicas`.
 - Chunks de 1000 caracteres com sobreposição de 150.
 - Ingestão separada e idempotente: `python -m rag.ingestion` (substitui os trechos de cada documento e continua se um falhar).
-- Busca por similaridade de cosseno (top-k 5, máximo 8) com distância máxima 0,30; sem trecho dentro do limite, o assistente informa que não há evidência.
+- Busca por similaridade de cosseno (top-k 5, máximo 8) com distância máxima 0,30; sem trecho dentro do limite, o assistente informa que não há evidência. Com o índice real (20 documentos, 52 trechos), o limiar separou 12 perguntas com resposta (0,20 a 0,27) de 6 sem resposta (0,36 a 0,42); a amostra é pequena.
 - O índice (`.vectorstore/`) **não é versionado** e precisa ser construído em cada ambiente. A construção chama a API de embeddings do Google.
 
 ## 10. Configuração do ambiente (Windows / PowerShell)
@@ -176,7 +177,7 @@ pytest
 node qa/test_logica.js     # lógica do frontend
 ```
 
-Os testes dos agentes usam um LLM simulado (`tests/llm_simulado.py`). Não há teste automatizado que dependa do Gemini real.
+Os testes dos agentes usam um LLM simulado (`tests/llm_simulado.py`). Não há teste automatizado que dependa do Gemini real. `tests/test_evalsets.py` valida os conjuntos de `evals/` e reexecuta a triagem determinística; para avaliar o modelo real com o `adk eval`, veja `evals/README.md` (não executado nesta entrega).
 
 ## 15. Equipe
 
@@ -202,16 +203,18 @@ Plano de trabalho por integrante: [`docs/PLANO_DE_TAREFAS.md`](docs/PLANO_DE_TAR
 | [`docs/CONEXAO_BACKEND.md`](docs/CONEXAO_BACKEND.md) | Contrato HTTP do chat |
 | [`docs/DADOS.md`](docs/DADOS.md) | Dados da cooperativa |
 | [`docs/QA_CHECKLIST.md`](docs/QA_CHECKLIST.md), [`docs/TESTE_USABILIDADE.md`](docs/TESTE_USABILIDADE.md) | QA e usabilidade |
+| [`docs/ROTEIRO_DEMONSTRACAO.md`](docs/ROTEIRO_DEMONSTRACAO.md) | Roteiro da demonstração |
 
 ## 17. Limitações e pendências
 
-- **Sem validação ampla com o Gemini real:** apenas 5 cenários de pedidos foram testados com a API; documentos e produtores foram validados só com LLM simulado.
-- **Índice RAG não construído por padrão** e distância máxima (0,30) ainda não calibrada com perguntas reais.
+- **Validação com o Gemini real é manual:** os 15 pedidos e 11 casos de documentos e produtores foram executados uma vez cada (ver `docs/AGENTES_E_TRIAGEM.md`, seção 9); não há medição automática de qualidade nem `adk eval` executado.
+- **Índice RAG não versionado:** cada máquina precisa executar `python -m rag.ingestion`. O limiar 0,30 foi conferido em poucas perguntas e os tamanhos de chunk não foram comparados.
 - **Sessões em memória:** reiniciar o servidor perde o contexto; `session_id` desconhecido inicia uma nova sessão.
 - **Sem autenticação** nem controle de acesso; as recusas de consultas em primeira pessoa de produtores são feitas pelos prompts.
 - **Pedidos triados não são gravados.** A persistência depende de decisão da equipe.
-- **Alertas** ainda vão no texto da resposta; não há campo estruturado `alerts`.
+- **Conversões de unidade:** só dúzia ↔ unidade; maço, caixa etc. ficam sem valor estimado até a equipe decidir.
+- **Instabilidade do Gemini:** erros transitórios (503 "alta demanda") aparecem como falha 502 e exigem repetir a mensagem.
 - **Google Cloud Storage** e os controllers opcionais de pedidos, documentos e produtores são esqueletos.
-- **Nomes dos campos do chat** (`message`, `user_id`/`user`) aguardam confirmação do líder técnico.
+- **Nomes dos campos do chat** (`message`, `user_id`/`user`, `alerts`) aguardam confirmação do líder técnico.
 - **Evidências visuais** (`docs/evidencias/` e o relatório do frontend) são do visual anterior.
 - Prazos: entrega da arquitetura em 19/11/2026; demonstração em 20 e 21/11/2026.

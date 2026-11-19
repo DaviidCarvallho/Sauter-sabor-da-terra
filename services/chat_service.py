@@ -32,7 +32,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from models.chat_model import ChatRequest, ChatResponse, FonteDocumental
+from models.chat_model import AlertaChat, ChatRequest, ChatResponse, FonteDocumental
 from utils.config import get_settings
 from utils.logger import get_logger
 
@@ -44,6 +44,7 @@ logger = get_logger(__name__)
 
 APP_NAME = "sabor_da_terra"
 CHAVE_FONTES = "fontes_documentais"  # preenchida por agents.tools.consultar_documentos
+CHAVE_ALERTAS = "alertas_pedido"  # preenchida por agents.tools.triar_pedido
 
 
 class ChatIndisponivelError(RuntimeError):
@@ -136,7 +137,7 @@ class ChatService:
                 user_id=req.user_id,
                 session_id=sessao.id,
                 new_message=conteudo,
-                state_delta={CHAVE_FONTES: []},
+                state_delta={CHAVE_FONTES: [], CHAVE_ALERTAS: []},
             ):
                 for chamada in evento.get_function_calls() or []:
                     if chamada.name in especialistas and chamada.name not in usados:
@@ -158,14 +159,22 @@ class ChatService:
             logger.error("O agente terminou sem resposta final.")
             raise ChatFalhaError("O assistente não produziu resposta.")
 
-        fontes = await self._fontes_da_sessao(req.user_id, sessao.id)
+        fontes, alertas = await self._estado_da_sessao(req.user_id, sessao.id)
         logger.info("Chat respondido (sessão %s…, agentes=%s, fontes=%d)", sessao.id[:8], usados, len(fontes))
-        return ChatResponse(answer=resposta, session_id=sessao.id, agents_used=usados, sources=fontes)
+        return ChatResponse(answer=resposta, session_id=sessao.id, agents_used=usados, sources=fontes, alerts=alertas)
 
-    async def _fontes_da_sessao(self, user_id: str, session_id: str) -> list[FonteDocumental]:
+    async def _estado_da_sessao(
+        self, user_id: str, session_id: str
+    ) -> tuple[list[FonteDocumental], list[AlertaChat]]:
         sessao = await self._sessions.get_session(app_name=APP_NAME, user_id=user_id, session_id=session_id)
-        brutas = (sessao.state.get(CHAVE_FONTES) if sessao else None) or []
-        return [FonteDocumental(**f) for f in brutas if isinstance(f, dict) and f.get("source")]
+        estado = sessao.state if sessao else {}
+        fontes = [
+            FonteDocumental(**f) for f in (estado.get(CHAVE_FONTES) or []) if isinstance(f, dict) and f.get("source")
+        ]
+        alertas = [
+            AlertaChat(**a) for a in (estado.get(CHAVE_ALERTAS) or []) if isinstance(a, dict) and a.get("mensagem")
+        ]
+        return fontes, alertas
 
 
 @lru_cache

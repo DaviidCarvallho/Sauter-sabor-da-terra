@@ -1,0 +1,522 @@
+{
+  "eval_set_id": "pedidos",
+  "name": "pedidos",
+  "description": "Pedidos reais de data/pedidos.json (relógio fixo na data de recebimento).",
+  "eval_cases": [
+    {
+      "evalId": "PED-2026-001",
+      "conversation": [
+        {
+          "invocationId": "PED-2026-001-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "Bom dia! Preciso pra essa sexta (01/nov): 30kg de queijo coalho, 10kg de manteiga de garrafa, 5kg de mel (aquele silvestre mesmo), 20 maços de coentro e 10 de cebolinha. Se tiver ricota fresca também quero uns 5kg. Obrigado! Carlos."
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Triagem do pedido de 01/11 com valores, produtores elegíveis e pendências (unidade da cebolinha)."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "Bom dia! Preciso pra essa sexta (01/nov): 30kg de queijo coalho, 10kg de manteiga de garrafa, 5kg de mel (aquele silvestre mesmo), 20 maços de coentro e 10 de cebolinha. Se tiver ricota fresca também quero uns 5kg. Obrigado! Carlos."
+                },
+                "name": "pedidos_agent"
+              },
+              {
+                "args": {},
+                "name": "obter_data_atual"
+              },
+              {
+                "args": {
+                  "expressao": "pra essa sexta (01/nov)",
+                  "data_referencia": "2026-10-28"
+                },
+                "name": "resolver_prazo_pedido"
+              },
+              {
+                "args": {
+                  "comprador": "Carlos",
+                  "itens": [
+                    {
+                      "produto": "queijo coalho",
+                      "quantidade": 30.0,
+                      "unidade": "kg",
+                      "organico": false
+                    },
+                    {
+                      "produto": "manteiga de garrafa",
+                      "quantidade": 10.0,
+                      "unidade": "kg",
+                      "organico": false
+                    },
+                    {
+                      "produto": "mel",
+                      "quantidade": 5.0,
+                      "unidade": "kg",
+                      "organico": false
+                    },
+                    {
+                      "produto": "coentro",
+                      "quantidade": 20.0,
+                      "unidade": "maços",
+                      "organico": false
+                    },
+                    {
+                      "produto": "cebolinha",
+                      "quantidade": 10.0,
+                      "unidade": "",
+                      "organico": false
+                    },
+                    {
+                      "produto": "ricota",
+                      "quantidade": 5.0,
+                      "unidade": "kg",
+                      "organico": false
+                    }
+                  ],
+                  "urgencia_sinalizada": false,
+                  "data_referencia": "2026-10-28",
+                  "prazo": "pra essa sexta (01/nov)",
+                  "tipo": "pedido_firme"
+                },
+                "name": "triar_pedido"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {
+        "triagem_esperada": {
+          "tipo": "pedido_firme",
+          "urgencia": "normal",
+          "alertas": [
+            "certificacao_vencida",
+            "exclusividade_produtor"
+          ],
+          "informacoes_ausentes": [
+            "unidade:cebolinha",
+            "capacidade_nao_comprovada:cebolinha",
+            "capacidade_nao_comprovada:ricota"
+          ]
+        }
+      }
+    },
+    {
+      "evalId": "PED-2026-003",
+      "conversation": [
+        {
+          "invocationId": "PED-2026-003-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "oi td bem? to precisando daquele queijo q vcs mandaram da ultima vez, o mais artesanal sabe? uns 15kg. e tem mel de jandaíra?? quero 3kg. preciso urgente pra amanha se possivel. manda o pix q eu transfiro agora"
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Pergunta o comprador e o tipo de queijo; não registra nem confirma pedido; recusa PIX."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "oi td bem? to precisando daquele queijo q vcs mandaram da ultima vez, o mais artesanal sabe? uns 15kg. e tem mel de jandaíra?? quero 3kg. preciso urgente pra amanha se possivel. manda o pix q eu transfiro agora"
+                },
+                "name": "pedidos_agent"
+              },
+              {
+                "args": {},
+                "name": "obter_data_atual"
+              },
+              {
+                "args": {
+                  "data_referencia": "2026-10-28",
+                  "expressao": "pra amanha"
+                },
+                "name": "resolver_prazo_pedido"
+              },
+              {
+                "args": {
+                  "prazo": "pra amanha",
+                  "comprador": "",
+                  "tipo": "pedido_firme",
+                  "itens": [
+                    {
+                      "produto": "queijo artesanal",
+                      "quantidade": 15.0,
+                      "unidade": "kg",
+                      "organico": false
+                    },
+                    {
+                      "produto": "mel de jandaíra",
+                      "quantidade": 3.0,
+                      "unidade": "kg",
+                      "organico": false
+                    }
+                  ],
+                  "data_referencia": "2026-10-28",
+                  "urgencia_sinalizada": true
+                },
+                "name": "triar_pedido"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {
+        "triagem_esperada": {
+          "tipo": "pedido_firme",
+          "urgencia": "urgente",
+          "alertas": [
+            "exclusividade_produtor",
+            "produto_nao_encontrado"
+          ],
+          "informacoes_ausentes": [
+            "comprador",
+            "capacidade_nao_comprovada:mel de jandaíra"
+          ]
+        }
+      }
+    },
+    {
+      "evalId": "PED-2026-005",
+      "conversation": [
+        {
+          "invocationId": "PED-2026-005-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "lucia minha filha me manda 10kg de queijo coalho e 5kg de manteiga pra sabado, o de sempre ne. bjs"
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Triagem sem alertas: queijo coalho 10 kg e manteiga 5 kg, urgência calculada."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "lucia minha filha me manda 10kg de queijo coalho e 5kg de manteiga pra sabado, o de sempre ne. bjs"
+                },
+                "name": "pedidos_agent"
+              },
+              {
+                "args": {},
+                "name": "obter_data_atual"
+              },
+              {
+                "args": {
+                  "data_referencia": "2026-10-28",
+                  "expressao": "pra sabado"
+                },
+                "name": "resolver_prazo_pedido"
+              },
+              {
+                "args": {
+                  "itens": [
+                    {
+                      "produto": "queijo coalho",
+                      "quantidade": 10.0,
+                      "unidade": "kg",
+                      "organico": false
+                    },
+                    {
+                      "produto": "manteiga",
+                      "quantidade": 5.0,
+                      "unidade": "kg",
+                      "organico": false
+                    }
+                  ],
+                  "prazo": "pra sabado",
+                  "urgencia_sinalizada": false,
+                  "comprador": "Lúcia",
+                  "data_referencia": "2026-10-28",
+                  "tipo": "pedido_firme"
+                },
+                "name": "triar_pedido"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {
+        "triagem_esperada": {
+          "tipo": "pedido_firme",
+          "urgencia": "normal",
+          "alertas": [],
+          "informacoes_ausentes": []
+        }
+      }
+    },
+    {
+      "evalId": "PED-2026-006",
+      "conversation": [
+        {
+          "invocationId": "PED-2026-006-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "PEDIDO URGENTE\n\nNecessitamos com máxima urgência para HOJE (29/10):\n- Queijo coalho: 200kg\n- Queijo manteiga: 50kg\n- Mel silvestre orgânico: 40kg\n- Goiaba: 300kg\n\nPagamento: boleto 30 dias conforme contrato.\nEntrega: CD SuperBom, BR-423 km 12, Garanhuns.\n\nSe não atenderem hoje perdemos a promoção de fim de semana.\n\nRoberto Cavalcanti\nGerente de Compras"
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Pedido urgente para o próprio dia com alertas de capacidade."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "PEDIDO URGENTE\n\nNecessitamos com máxima urgência para HOJE (29/10):\n- Queijo coalho: 200kg\n- Queijo manteiga: 50kg\n- Mel silvestre orgânico: 40kg\n- Goiaba: 300kg\n\nPagamento: boleto 30 dias conforme contrato.\nEntrega: CD SuperBom, BR-423 km 12, Garanhuns.\n\nSe não atenderem hoje perdemos a promoção de fim de semana.\n\nRoberto Cavalcanti\nGerente de Compras"
+                },
+                "name": "pedidos_agent"
+              },
+              {
+                "args": {},
+                "name": "obter_data_atual"
+              },
+              {
+                "args": {
+                  "data_referencia": "2026-10-29",
+                  "expressao": "HOJE (29/10)"
+                },
+                "name": "resolver_prazo_pedido"
+              },
+              {
+                "args": {
+                  "tipo": "pedido_firme",
+                  "comprador": "Roberto Cavalcanti",
+                  "prazo": "HOJE (29/10)",
+                  "urgencia_sinalizada": true,
+                  "itens": [
+                    {
+                      "produto": "queijo coalho",
+                      "quantidade": 200.0,
+                      "unidade": "kg",
+                      "organico": false
+                    },
+                    {
+                      "produto": "queijo manteiga",
+                      "quantidade": 50.0,
+                      "unidade": "kg",
+                      "organico": false
+                    },
+                    {
+                      "produto": "mel silvestre",
+                      "quantidade": 40.0,
+                      "unidade": "kg",
+                      "organico": true
+                    },
+                    {
+                      "produto": "goiaba",
+                      "quantidade": 300.0,
+                      "unidade": "kg",
+                      "organico": false
+                    }
+                  ],
+                  "data_referencia": "2026-10-29"
+                },
+                "name": "triar_pedido"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {
+        "triagem_esperada": {
+          "tipo": "pedido_firme",
+          "urgencia": "urgente",
+          "alertas": [
+            "certificacao_vencida",
+            "exclusividade_produtor",
+            "quantidade_acima_capacidade"
+          ],
+          "informacoes_ausentes": []
+        }
+      }
+    },
+    {
+      "evalId": "PED-2026-011",
+      "conversation": [
+        {
+          "invocationId": "PED-2026-011-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "Dear Sabor da Terra,\n\nWe are interested in sourcing organic tropical fruits for export to the European market. We need:\n- Mango: 500kg/month\n- Guava: 300kg/month\n- Passion fruit: 200kg/month\n\nAll products MUST have valid organic certification (Brazilian and international equivalent). Please provide:\n1. Complete producer list with certifications\n2. Traceability documentation\n3. Phytosanitary certificates\n4. Bank details for international wire transfer\n\nRegards,\nDr. Heinrich Mueller\nSourcing Director"
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Pedido em inglês: itens traduzidos, prazo pendente, alertas de capacidade."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [
+              {
+                "args": {
+                  "request": "Dear Sabor da Terra,\n\nWe are interested in sourcing organic tropical fruits for export to the European market. We need:\n- Mango: 500kg/month\n- Guava: 300kg/month\n- Passion fruit: 200kg/month\n\nAll products MUST have valid organic certification (Brazilian and international equivalent). Please provide:\n1. Complete producer list with certifications\n2. Traceability documentation\n3. Phytosanitary certificates\n4. Bank details for international wire transfer\n\nRegards,\nDr. Heinrich Mueller\nSourcing Director"
+                },
+                "name": "pedidos_agent"
+              },
+              {
+                "args": {
+                  "request": "Dear Sabor da Terra,\n\nWe are interested in sourcing organic tropical fruits for export to the European market. We need:\n- Mango: 500kg/month\n- Guava: 300kg/month\n- Passion fruit: 200kg/month\n\nAll products MUST have valid organic certification (Brazilian and international equivalent). Please provide:\n1. Complete producer list with certifications\n2. Traceability documentation\n3. Phytosanitary certificates\n4. Bank details for international wire transfer\n\nRegards,\nDr. Heinrich Mueller\nSourcing Director"
+                },
+                "name": "documentos_agent"
+              },
+              {
+                "args": {},
+                "name": "obter_data_atual"
+              },
+              {
+                "args": {
+                  "pergunta": "organic certification traceability phytosanitary certificates Mango Guava Passion fruit"
+                },
+                "name": "consultar_documentos"
+              },
+              {
+                "args": {
+                  "prazo": "mensal",
+                  "urgencia_sinalizada": false,
+                  "comprador": "",
+                  "tipo": "fornecimento_recorrente",
+                  "itens": [
+                    {
+                      "produto": "manga",
+                      "quantidade": 500.0,
+                      "unidade": "kg/mês",
+                      "organico": true
+                    },
+                    {
+                      "produto": "goiaba",
+                      "quantidade": 300.0,
+                      "unidade": "kg/mês",
+                      "organico": true
+                    },
+                    {
+                      "produto": "maracujá",
+                      "quantidade": 200.0,
+                      "unidade": "kg/mês",
+                      "organico": true
+                    }
+                  ],
+                  "data_referencia": ""
+                },
+                "name": "triar_pedido"
+              },
+              {
+                "args": {
+                  "pergunta": "Passion fruit Maracuja certificacao organica"
+                },
+                "name": "consultar_documentos"
+              }
+            ],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {
+        "triagem_esperada": {
+          "tipo": "fornecimento_recorrente",
+          "urgencia": "indefinida",
+          "alertas": [
+            "certificacao_organica_indisponivel",
+            "quantidade_acima_capacidade"
+          ],
+          "informacoes_ausentes": [
+            "comprador",
+            "prazo_nao_reconhecido",
+            "capacidade_nao_comprovada:maracujá"
+          ]
+        }
+      }
+    },
+    {
+      "evalId": "PED-2026-012",
+      "conversation": [
+        {
+          "invocationId": "PED-2026-012-1",
+          "userContent": {
+            "parts": [
+              {
+                "text": "Dona Lúcia, tô ligando pra saber quanto eu vendi esse mês. E aquele pagamento do Mercado Bom Preço de setembro, já caiu? Minha conta é no BB agência 0437. Me diz quanto tá o saldo que eu tenho pra receber. Bjs"
+              }
+            ],
+            "role": "user"
+          },
+          "finalResponse": {
+            "parts": [
+              {
+                "text": "Produtora perguntando saldo: nenhum especialista acionado; orienta procurar a equipe."
+              }
+            ],
+            "role": "model"
+          },
+          "intermediateData": {
+            "toolUses": [],
+            "toolResponses": [],
+            "intermediateResponses": []
+          },
+          "creationTimestamp": 0.0
+        }
+      ],
+      "creationTimestamp": 0.0,
+      "finalSessionState": {}
+    }
+  ],
+  "creation_timestamp": 0.0
+}

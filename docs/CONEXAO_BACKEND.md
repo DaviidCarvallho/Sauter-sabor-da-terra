@@ -7,8 +7,8 @@ O frontend chama `POST /api/chat`, que **já está implementado** (`api/chat_con
 | Item | Requisição / resposta | Observação |
 |---|---|---|
 | Requisição | `{ "message": str (1 a 4000), "session_id": str \| null, "user_id": str }` | `user_id` aceita o alias `user`; `session_id` vazio inicia uma conversa |
-| Resposta | `{ "answer", "session_id", "status", "agents_used": [], "sources": [{"source","page"}] }` | `sources` só vem preenchido pelo Agente de Documentos |
-| Alertas | **não são enviados como campo** | A tela sabe exibir `alerts`, mas hoje os alertas da triagem vêm dentro do texto de `answer` |
+| Resposta | `{ "answer", "session_id", "status", "agents_used": [], "sources": [{"source","page"}], "alerts": [{"tipo","severidade","mensagem","produto"}] }` | `sources` só vem preenchido pelo Agente de Documentos; `alerts` pela triagem de pedidos |
+| Alertas | enviados em `alerts` na triagem de pedidos | Calculados pelo código (não pelo modelo); `severidade` é `alta`, `media` ou `info`; a tela os exibe em destaque. O texto de `answer` também os menciona |
 | Erros | `{ "detail": "..." }` | 422 corpo inválido; 429 limite da IA (tentar de novo); 503 IA não configurada ou chave recusada; 502 falha do assistente |
 | Tempo máximo | 60 s no navegador | Uma resposta com vários agentes pode levar 10 a 20 s; no Free Tier, mais |
 

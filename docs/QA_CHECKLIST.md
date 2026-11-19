@@ -63,16 +63,16 @@ Legenda: **OK-mock** = verificado contra o servidor simulado (`qa/mock_server.py
 
 ## 5. Cenários de aceitação (rodar com o backend real)
 
-O backend de chat, os três agentes e os dados já existem (`docs/ESTRUTURA.md`). O que limita a execução dos cenários é a **chave de API** (cada mensagem faz de 4 a 6 chamadas ao Gemini; Free Tier de ~15 por minuto, então espace as mensagens em ~30 s) e, para os cenários B e C, o **índice vetorial** (`python -m rag.ingestion`).
+O backend de chat, os três agentes e os dados já existem (`docs/ESTRUTURA.md`). O que limita a execução dos cenários é a **chave de API** (cada mensagem faz de 4 a 6 chamadas ao Gemini; Free Tier de ~15 por minuto, então espace as mensagens em ~30 s) e, para os cenários B e C, o **índice vetorial** (`python -m rag.ingestion`, já construído na máquina do David; cada máquina precisa construir o seu).
 
 Situação da validação (19/11/2026):
 
 | Cenário | Situação |
 |---|---|
-| A. Triagem de pedido | Validado pelo desenvolvedor com o Gemini real em 5 cenários (ver `docs/AGENTES_E_TRIAGEM.md`, seção 9); **falta a execução de QA com captura de tela** |
-| B. Consulta documental | Testado só com LLM simulado; **falta índice construído e execução real** |
-| C. Pergunta sem evidência | Testado só com LLM simulado; depende do mesmo índice |
-| D. Relatório de produtor | Testado só com LLM simulado; **falta execução real** |
+| A. Triagem de pedido | Validado pelo desenvolvedor com o Gemini real nos 15 pedidos de `pedidos.json` e em 5 cenários (ver `docs/AGENTES_E_TRIAGEM.md`, seção 9); **falta a execução de QA com captura de tela** |
+| B. Consulta documental | Validado com o Gemini real em 5 perguntas, com índice construído; **falta a execução de QA com captura de tela** |
+| C. Pergunta sem evidência | Validado com o Gemini real (contrato do Supermercado Extra e laudo do P005: "não encontrei"); **falta a execução de QA** |
+| D. Relatório de produtor | Validado com o Gemini real (resumo, aviso, produtor inexistente e recusa em primeira pessoa); **falta a execução de QA** |
 
 | Cenário | Mensagem de exemplo | Deve acontecer | Evidência |
 |---|---|---|---|

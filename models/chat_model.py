@@ -5,7 +5,7 @@ Função:
 
 Responsabilidades:
     - ChatRequest: user_id (alias "user"), session_id (opcional) e message
-    - ChatResponse: answer, session_id, agents_used, sources e status
+    - ChatResponse: answer, session_id, agents_used, sources, alerts e status
 
 Não deve:
     - Conter lógica
@@ -51,9 +51,19 @@ class FonteDocumental(BaseModel):
     page: int | None = None
 
 
+class AlertaChat(BaseModel):
+    """Alerta determinístico (calculado em código, não pelo LLM) para destaque na interface."""
+
+    tipo: str
+    severidade: str
+    mensagem: str
+    produto: str | None = None
+
+
 class ChatResponse(BaseModel):
     answer: str
     session_id: str
     agents_used: list[str] = Field(default_factory=list)
     sources: list[FonteDocumental] = Field(default_factory=list)
+    alerts: list[AlertaChat] = Field(default_factory=list)
     status: Literal["success"] = "success"

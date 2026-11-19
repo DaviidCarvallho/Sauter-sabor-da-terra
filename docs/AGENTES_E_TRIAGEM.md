@@ -80,7 +80,7 @@ Todas devolvem um dicionário com `status` (`"sucesso"` ou `"erro"`). Erros espe
 > **Decisão proposta, a validar com Murilo/equipe.** Os dados não trazem tipo nem urgência (`docs/DADOS.md`, seção 8). O vocabulário de tipo foi derivado das 15 mensagens de `pedidos.json` (compras, cotações PED-007/008/009/013, recorrência PED-010/011, e mensagens que não são compra PED-012/014/015) e os limiares de urgência (2 e 14 dias) são uma proposta. Estão em constantes (`TIPOS_PEDIDO`, `LIMITE_URGENTE_DIAS`, `LIMITE_PLANEJADO_DIAS`) para ajuste fácil. O `PedidoEstruturado` mantém `tipo`/`urgencia` como `str`, sem enum fechado, como combinado com Arthur.
 
 ### Informações ausentes (`informacoes_ausentes`)
-Somam-se às do `PedidoService` (`comprador`, `prazo`, `quantidade:<produto>`): `unidade:<produto>`, `prazo_ambiguo`, `prazo_nao_reconhecido`, `prazo_no_passado` e `conversao_unidade:<produto>` e `capacidade_nao_comprovada:<produto>` (sem limite explícito nem lote histórico, o sistema não afirma capacidade). Quando a unidade pedida difere da tabela de preços (ex.: "caixas" × kg), não há fator de conversão nos dados: o item fica **sem valor estimado** e a unidade informada é preservada, em vez de tratar "10 caixas" como "10 kg".
+Somam-se às do `PedidoService` (`comprador`, `prazo`, `quantidade:<produto>`): `unidade:<produto>`, `prazo_ambiguo`, `prazo_nao_reconhecido`, `prazo_no_passado` e `conversao_unidade:<produto>` e `capacidade_nao_comprovada:<produto>` (sem limite explícito nem lote histórico, o sistema não afirma capacidade). Quando a unidade pedida difere da tabela de preços (ex.: "caixas" × kg), não há fator de conversão nos dados: o item fica **sem valor estimado** e a unidade informada é preservada, em vez de tratar "10 caixas" como "10 kg". **Única conversão automática: dúzia ↔ unidade** (1 dúzia = 12 unidades, fator exato), registrada no alerta informativo `conversao_unidade_aplicada`. Frequência escrita na unidade ("kg/mês", "kg por semana") é descartada. Conversões de maço, caixa, saco etc. continuam pendentes de decisão da equipe.
 
 Safra, capacidade, preço, produtores elegíveis, certificação e restrições continuam no `PedidoService` (Arthur).
 
@@ -89,7 +89,7 @@ Safra, capacidade, preço, produtores elegíveis, certificação e restrições 
 Não havia implementação de `chat_model`, `chat_service` e `chat_controller` (esqueletos) e eles são necessários para o fluxo ponta a ponta, então foram implementados de forma mínima. **Pedimos revisão do Murilo e da Raquel.**
 
 - Requisição: `message` (1 a 4000 caracteres), `user_id` (aceita o alias `user`; padrão `anonimo`), `session_id` opcional.
-- Resposta: `answer`, `session_id`, `agents_used`, `sources` (preenchido pelo Agente de Documentos; `[]` nas demais respostas e zerado a cada turno), `status`.
+- Resposta: `answer`, `session_id`, `agents_used`, `sources` (preenchido pelo Agente de Documentos; `[]` nas demais respostas e zerado a cada turno), `alerts` (preenchido por `triar_pedido`: `tipo`, `severidade`, `mensagem`, `produto`; alertas de safra, capacidade etc. calculados pelo código, mais as informações ausentes; zerado a cada turno) e `status`.
 - **Divergência a decidir:** o documento de contratos usa `message` na resposta e `user` na requisição como exemplo ilustrativo; o plano de tarefas, o frontend e os testes de QA usam `answer` e `user_id`. Adotamos estes últimos (o frontend lê `answer`, `reply`, `response` e `message`).
 - Sessão: em memória, isolada por usuário. `session_id` desconhecido ou de outro usuário gera sessão nova, devolvida na resposta (o contexto anterior não é reaproveitado).
 - Erros: 422 (corpo inválido), 429 (limite de requisições da IA; tentar de novo), 503 (IA não configurada **ou chave recusada pela API**), 502 (falha do assistente). Corpo `{"detail": "..."}`, sem detalhes internos.
@@ -122,11 +122,11 @@ Os testes de agentes usam um **LLM simulado** (`tests/llm_simulado.py`): o `Runn
 
 ## 8. Limitações conhecidas
 
-- A validação real cobriu **6 turnos / 5 cenários** (seção 9), não os 15 pedidos de `pedidos.json`. Recomenda-se rodar os demais pela interface e conferir com `docs/QA_CHECKLIST.md`.
+- A validação real (seção 9) foi **manual, com uma execução por caso**: não mede qualidade de forma repetível. `evals/` guarda conjuntos de avaliação do ADK, mas `adk eval` com o Gemini real **não foi executado**.
+- O Gemini às vezes responde 503 "alta demanda" (observado 1 vez em 30 execuções); o `chat_service` devolve 502 e o usuário precisa repetir a mensagem.
 - Free Tier com limite de requisições por minuto baixo: uma demonstração com várias mensagens seguidas pode receber 429 (o `chat_service` devolve 429 com mensagem amigável nesse caso). Considere ativar o faturamento/outro tier ou espaçar as mensagens.
-- **Agente de Documentos depende do índice vetorial**: sem `python -m rag.ingestion` executado (e `GOOGLE_API_KEY` para os embeddings), toda consulta retorna "evidência insuficiente". O limiar 0,30 não foi calibrado com perguntas reais. Rastreabilidade de lotes (`lotes.csv`) não é coberta por esse agente.
+- **Agente de Documentos depende do índice vetorial**: sem `python -m rag.ingestion` executado (e `GOOGLE_API_KEY` para os embeddings), toda consulta retorna "evidência insuficiente". O limiar 0,30 foi conferido em 18 perguntas (seção 9), amostra pequena. Rastreabilidade de lotes (`lotes.csv`) não é coberta por esse agente.
 - **Agente de Produtores não autentica quem pergunta**: o sistema atende a equipe; mensagens em primeira pessoa de um produtor sobre os próprios valores são recusadas pelo prompt (e o orquestrador não as encaminha), mas isso é uma salvaguarda do modelo, não controle de acesso. Autenticação continua pendente.
-- Os agentes de Documentos e de Produtores foram validados **só com LLM simulado** (testes automatizados); não foram executados com o Gemini real.
 - Sessões em memória (reiniciar o servidor apaga o contexto) e sem autenticação.
 - O resumo das ferramentas internas do especialista não aparece nos eventos do orquestrador (o `AgentTool` executa um runner aninhado); por isso `agents_used` lista os especialistas, não as ferramentas.
 - Capacidade é uma referência (limite explícito ou maior lote histórico), não garantia de produção futura.
@@ -146,3 +146,38 @@ Executada em 19/11/2026 pelo `ChatService` (orquestrador, `AgentTool` e ferramen
 | 5 | PED-012 (produtora pergunta saldo; cita conta bancária) | **Nenhum especialista acionado**; explicou que não consulta dados financeiros individuais; não repetiu a conta bancária. |
 
 Achados corrigidos a partir desta validação: resposta final omitia urgência/produtores e oferecia "anotar" (prompts); data ISO não reconhecida; alerta falso de unidade para "maços"/"dúzias" (uma linha em `pedido_service.py`); "caixas" valorizada como kg.
+
+### 9.1 Os 15 pedidos de `data/pedidos.json`
+
+Executados um a um com o relógio fixo na data de recebimento de cada pedido (o "hoje" das ferramentas), sem histórico de conversa. Uma execução por pedido; a classificação de tipo/urgência não foi comparada a um gabarito, porque os dados não trazem um.
+
+| Aspecto | Observado |
+|---|---|
+| Execução | 15 de 15 concluídos. O PED-004 falhou na primeira tentativa com 503 "alta demanda" do Gemini e passou ao ser repetido |
+| Especialistas | Só Pedidos: 001, 002, 003, 005, 006, 007, 008, 013. Pedidos + Documentos: 004, 009, 010, 011. Só Documentos: 014 (aviso da ADAGRO). Nenhum: 012 e 015 (produtores escrevendo sobre os próprios valores; o assistente recusou e orientou procurar a equipe) |
+| Alertas estruturados | Presentes nas triagens com problema (por exemplo, 6 no PED-006 e 8 no PED-007) e ausentes no PED-005, que não tem nenhum |
+| Pontos que ainda merecem atenção | PED-009: o modelo desdobrou "frutas variadas" em itens sem quantidade, o que gerou muitos alertas; PED-013: "janeiro de 2027" não é reconhecido como prazo e o sistema pergunta a data; PED-010: pedido de lista de produtos orgânicos tratado como fornecimento recorrente sem quantidade |
+
+Achados corrigidos a partir desta rodada: nomes com descrição ("mel (aquele silvestre mesmo)", "ricota fresca") e em inglês ("Mango", "Guava", "Passion fruit") não eram encontrados no catálogo (orientação adicionada aos prompts); a unidade "kg/month" gerava pedido de conversão (a frequência agora é descartada); na primeira rodada o "hoje" informado no texto nem sempre era repassado às ferramentas, o que distorcia prazos (a validação passou a fixar o relógio via `agents.tools._hoje`).
+
+### 9.2 Documentos e produtores
+
+| Caso | Resultado observado |
+|---|---|
+| Produtores com certificação orgânica vigente para mel | José Antônio dos Santos (P002) e Débora Cristina de Melo (P018), com validade e fontes |
+| Temperatura de armazenamento do queijo coalho | 2 °C a 8 °C, conferido na ficha técnica |
+| Pagamento no contrato do Restaurante Raízes | PIX no ato da entrega, conferido no contrato |
+| Certificação da Maria (P001) | Vigente até 15/06/2027, conferido nos dados |
+| Contrato com o Supermercado Extra (não existe) | "Não encontrei essa informação nos documentos"; citou o contrato do Mercado Bom Preço como o único existente, sem atribuí-lo ao Extra |
+| Laudo de queijaria do P005 (não existe) | Disse que não encontrou |
+| Resumo da P001 | Totais, produtos e pedidos coerentes com `financeiro.csv` |
+| Aviso para o P004 | Rascunho com pendência de R$ 1.020,00 e certificação vencendo em 01/12/2026, valores conferidos com `financeiro.csv` |
+| Pendências do P003 | R$ 6.020,00 em atraso, conferido com `financeiro.csv` |
+| P999 (inexistente) | "Não foi encontrado" |
+| "Quanto eu vendi esse mês? Sou a produtora Maria" | Nenhum especialista; orientou procurar a equipe |
+
+Observações: uma pergunta sobre a "política de devolução do Supermercado Extra" foi recusada pelo orquestrador sem consultar documentos (não houve invenção, mas o caminho "sem evidência" só foi exercitado quando a pergunta citava contrato ou laudo); um pedido genérico de "notificação para o P004" foi recusado até que a equipe se identificasse.
+
+### 9.3 Índice e limiar do RAG
+
+Índice construído em 19/11/2026 com `python -m rag.ingestion`: 20 documentos, 52 trechos, nenhuma falha. Distância do melhor trecho: 12 perguntas com resposta nos documentos ficaram entre 0,20 e 0,27; 6 perguntas sem relação com a cooperativa ficaram entre 0,36 e 0,42. O limiar 0,30 separa os dois grupos nessa amostra, que é pequena; o tamanho dos chunks (1000/150) não foi comparado com outros valores. Em duas perguntas o primeiro trecho não era do documento esperado (hortaliças × Mercado Bom Preço; inspeção da ADAGRO), embora fosse relacionado.
