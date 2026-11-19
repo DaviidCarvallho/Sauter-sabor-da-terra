@@ -89,10 +89,15 @@ def _erro(mensagem: str) -> dict[str, Any]:
     return {"status": "erro", "mensagem": mensagem}
 
 
+def _hoje() -> date:
+    """Data de hoje (ponto único para testes e validações com relógio fixo)."""
+    return date.today()
+
+
 def _parse_data(valor: str | None) -> date:
     """Data de referência em AAAA-MM-DD; vazio = hoje."""
     if not valor or not valor.strip():
-        return date.today()
+        return _hoje()
     return date.fromisoformat(valor.strip())
 
 
@@ -107,7 +112,7 @@ def obter_data_atual() -> dict[str, Any]:
     Returns:
         Dicionário com "status", "data" (AAAA-MM-DD) e "dia_semana".
     """
-    hoje = date.today()
+    hoje = _hoje()
     return {"status": "sucesso", "data": hoje.isoformat(), "dia_semana": NOMES_DIAS_PT[hoje.weekday()]}
 
 

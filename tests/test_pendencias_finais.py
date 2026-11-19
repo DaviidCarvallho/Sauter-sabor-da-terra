@@ -131,3 +131,42 @@ def test_chat_sem_pedido_devolve_alertas_vazios():
     app.dependency_overrides[get_chat_service] = lambda: servico
     r = TestClient(app).post("/api/chat", json={"user_id": "u1", "message": "oi"})
     assert r.status_code == 200 and r.json()["alerts"] == []
+
+
+# --- regressão da correção em pedido_service (unidades com acento) --------------------------------
+
+
+@pytest.mark.parametrize(
+    ("produto", "unidade"),
+    [("coentro", "maços"), ("coentro", "maço"), ("coentro", "macos"), ("ovos caipira", "dúzias"), ("ovos caipira", "duzia")],
+)
+def test_unidade_sinonima_com_ou_sem_acento_nao_gera_divergencia(produto, unidade):
+    from services.pedido_service import PedidoService
+
+    item = PedidoService().validar_item(
+        ItemPedidoEntrada(produto_informado=produto, quantidade=Decimal("5"), unidade_informada=unidade),
+        data_referencia=REF,
+    )
+    assert "unidade_divergente" not in [a.tipo for a in item.alertas]
+
+
+# --- frequência escrita na unidade ("kg/mês") -----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperado"),
+    [("kg/month", "kg"), ("kg / mês", "kg"), ("kg por semana", "kg"), ("kg", "kg"), ("caixas/semana", "caixas"), (None, None)],
+)
+def test_sem_frequencia(entrada, esperado):
+    from services.triagem_service import sem_frequencia
+
+    assert sem_frequencia(entrada) == esperado
+
+
+def test_triagem_aceita_kg_por_mes_sem_pedir_conversao():
+    p = TriagemService().triar(
+        [ItemPedidoEntrada(produto_informado="goiaba paluma", quantidade=Decimal("300"), unidade_informada="kg/month")],
+        data_referencia=REF,
+    )
+    assert p.itens[0].unidade == "kg"
+    assert not [x for x in p.informacoes_ausentes if x.startswith("conversao_unidade")]

@@ -210,6 +210,19 @@ def validar_tipo(tipo: str | None) -> str | None:
     return valor
 
 
+# Frequência escrita junto da unidade ("kg/mês", "kg/month", "caixas por semana"): não faz parte
+# da unidade de medida; o tipo "fornecimento_recorrente" já carrega essa informação.
+_RE_FREQUENCIA = re.compile(r"\s*(?:/|por\s+)\s*(?:m[eê]s(?:es)?|month|semana|week|dia|day)$", re.IGNORECASE)
+
+
+def sem_frequencia(unidade: str | None) -> str | None:
+    """Remove o sufixo de frequência da unidade informada ("kg/mês" -> "kg")."""
+    if not unidade:
+        return unidade
+    limpa = _RE_FREQUENCIA.sub("", unidade).strip()
+    return limpa or None
+
+
 # Única conversão de unidade com fator exato e sem ambiguidade nos dados: 1 dúzia = 12 unidades.
 # Maço, caixa, saco etc. não têm fator na tabela de preços; nesses casos a triagem NÃO converte
 # e pede a unidade ao comprador (informação ausente "conversao_unidade").
@@ -261,7 +274,11 @@ class TriagemService:
 
         # Conversão exata dúzia<->unidade (único fator comprovado); demais divergências não são convertidas.
         convertidos: dict[int, str] = {}
-        itens = list(itens)
+        itens = [
+            i.model_copy(update={"unidade_informada": sem_frequencia(i.unidade_informada)})
+            if i.unidade_informada and sem_frequencia(i.unidade_informada) != i.unidade_informada else i
+            for i in itens
+        ]
         for idx, it in enumerate(itens):
             conv = converter_duzia_unidade(
                 it.quantidade, it.unidade_informada, self._pedidos.unidade_oficial(it.produto_informado)

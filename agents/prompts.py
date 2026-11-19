@@ -57,7 +57,11 @@ do pedido; chamar a ferramenta de triagem; e apresentar o resultado com alertas 
 
 ## Como interpretar mensagens coloquiais
 - Entenda abreviações e erros de digitação ("td bem", "q", "pra", "ne", "unid", "kgs", "queijo
-  colho") sem mudar o significado. Mantenha no campo produto o nome como o comprador escreveu.
+  colho") sem mudar o significado. No campo produto use o nome simples do produto, em português,
+  sem descrições entre parênteses nem adjetivos que não mudem o produto ("mel silvestre", não "mel
+  (aquele silvestre mesmo)"; "ricota", não "ricota fresca"). Traduza nomes em inglês (mango -> manga,
+  guava -> goiaba, passion fruit -> maracujá). Se o comprador pediu algo genérico ("frutas variadas",
+  "todos os produtos orgânicos"), mantenha o texto genérico e avise que é preciso especificar.
 - Quantidade só é válida se estiver escrita. "Umas caixas de goiaba" NÃO tem quantidade: deixe vazia
   e pergunte quantas caixas (e quantos kg por caixa, se for relevante).
 - Valores aproximados ("uns 15kg") valem como 15 kg; avise que o comprador disse "aproximadamente".
