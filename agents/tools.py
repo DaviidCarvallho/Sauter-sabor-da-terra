@@ -143,6 +143,21 @@ def resolver_prazo_pedido(expressao: str = "", data_referencia: str = "") -> dic
     }
 
 
+def alertas_estruturados(pedido: Any) -> list[dict[str, Any]]:
+    """Alertas do código (itens + informações ausentes) em formato estável para a interface."""
+    saida: list[dict[str, Any]] = []
+    for item in pedido.itens:
+        for a in item.alertas:
+            saida.append({"tipo": a.tipo, "severidade": a.severidade, "mensagem": a.mensagem, "produto": a.produto})
+    for ausente in pedido.informacoes_ausentes:
+        codigo, _, produto = ausente.partition(":")
+        saida.append({
+            "tipo": "informacao_ausente", "severidade": "media",
+            "mensagem": f"Informação ausente ou ambígua: {codigo.replace('_', ' ')}.", "produto": produto or None,
+        })
+    return saida
+
+
 def triar_pedido(
     itens: list[ItemTriagem] | None = None,
     comprador: str = "",
@@ -150,6 +165,7 @@ def triar_pedido(
     tipo: str = "",
     urgencia_sinalizada: bool = False,
     data_referencia: str = "",
+    tool_context: ToolContext | None = None,
 ) -> dict[str, Any]:
     """Valida um pedido em código: catálogo, safra, capacidade, preço, produtores e ausências.
 
@@ -202,6 +218,9 @@ def triar_pedido(
         return _erro("Não foi possível consultar os dados da cooperativa agora. Tente novamente.")
 
     resultado: dict[str, Any] = {"status": "sucesso", "pedido": pedido.model_dump(mode="json")}
+    if tool_context is not None:
+        # Encaminhado à sessão do orquestrador; o chat_service devolve em "alerts" (estruturado).
+        tool_context.state["alertas_pedido"] = alertas_estruturados(pedido)
     if prazo.strip():
         p = resolver_prazo(prazo, ref)
         resultado["prazo"] = {"resultado": p.status, "explicacao": p.explicacao}

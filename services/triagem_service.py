@@ -35,9 +35,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from models.pedido_model import ItemPedidoEntrada, PedidoEstruturado
+from models.pedido_model import AlertaTriagem, ItemPedidoEntrada, PedidoEstruturado
 from repositories.storage_repository import normalizar_texto
-from services.pedido_service import DIAS_SEMANA_PT, NOMES_DIAS_PT, PedidoService
+from services.pedido_service import DIAS_SEMANA_PT, NOMES_DIAS_PT, SINONIMOS_UNIDADE, PedidoService
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -210,6 +210,27 @@ def validar_tipo(tipo: str | None) -> str | None:
     return valor
 
 
+# Única conversão de unidade com fator exato e sem ambiguidade nos dados: 1 dúzia = 12 unidades.
+# Maço, caixa, saco etc. não têm fator na tabela de preços; nesses casos a triagem NÃO converte
+# e pede a unidade ao comprador (informação ausente "conversao_unidade").
+FATOR_DUZIA = Decimal("12")
+
+
+def converter_duzia_unidade(
+    quantidade: Decimal | None, unidade_informada: str | None, unidade_oficial: str | None
+) -> tuple[Decimal, str] | None:
+    """Converte dúzia<->unidade quando a tabela de preços usa a outra unidade; senão devolve None."""
+    if quantidade is None or not unidade_informada or not unidade_oficial:
+        return None
+    de = SINONIMOS_UNIDADE.get(normalizar_texto(unidade_informada), normalizar_texto(unidade_informada))
+    para = normalizar_texto(unidade_oficial)
+    if de == "dúzia" and para == "unidade":
+        return quantidade * FATOR_DUZIA, "unidade"
+    if de == "unidade" and para == "duzia":
+        return quantidade / FATOR_DUZIA, "dúzia"
+    return None
+
+
 class TriagemService:
     """Triagem completa: prazo + validações do PedidoService + urgência + tipo."""
 
@@ -237,6 +258,20 @@ class TriagemService:
             resolver_prazo(prazo_informado, data_referencia) if prazo_informado else None
         )
         data_entrega = prazo.data if prazo and prazo.status == "resolvido" else None
+
+        # Conversão exata dúzia<->unidade (único fator comprovado); demais divergências não são convertidas.
+        convertidos: dict[int, str] = {}
+        itens = list(itens)
+        for idx, it in enumerate(itens):
+            conv = converter_duzia_unidade(
+                it.quantidade, it.unidade_informada, self._pedidos.unidade_oficial(it.produto_informado)
+            )
+            if conv:
+                convertidos[idx] = (
+                    f"{it.quantidade.normalize():f} {it.unidade_informada} convertido(s) para "
+                    f"{conv[0].normalize():f} {conv[1]} (1 dúzia = 12 unidades)."
+                )
+                itens[idx] = it.model_copy(update={"quantidade": conv[0], "unidade_informada": conv[1]})
 
         pedido = self._pedidos.estruturar_pedido(
             itens,
@@ -266,7 +301,11 @@ class TriagemService:
         # Unidade diferente da tabela de preços (ex.: "caixas" x kg): sem fator de conversão
         # nos dados, o valor estimado não é confiável e não deve ser apresentado.
         itens_ok = []
-        for item_in, item_val in zip(itens, pedido.itens, strict=True):
+        for idx, (item_in, item_val) in enumerate(zip(itens, pedido.itens, strict=True)):
+            if idx in convertidos:
+                item_val = item_val.model_copy(update={"alertas": [*item_val.alertas, AlertaTriagem(
+                    tipo="conversao_unidade_aplicada", mensagem=convertidos[idx], severidade="info",
+                    produto=item_val.produto_informado)]})
             if any(a.tipo == "unidade_divergente" for a in item_val.alertas):
                 itens_ok.append(item_val.model_copy(update={
                     "unidade": item_in.unidade_informada, "valor_estimado": None,

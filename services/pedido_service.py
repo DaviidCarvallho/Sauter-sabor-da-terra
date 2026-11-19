@@ -128,6 +128,11 @@ class PedidoService:
             produto_repo=self._produto_repo,
         )
 
+    def unidade_oficial(self, produto: str) -> str | None:
+        """Unidade da tabela de preços para o produto (None se não houver preço)."""
+        precos = self._produto_repo.listar_precos_por_produto(produto)
+        return precos[0].unidade if precos else None
+
     def listar_pedidos_brutos(self) -> list[PedidoBruto]:
         return self._pedido_repo.listar()
 
