@@ -66,6 +66,7 @@ sabor-da-terra/
 │   ├── ESTRUTURA.md                          [OK] Este documento
 │   ├── PLANO_DE_TAREFAS.md                   [OK] Plano e checklist da equipe
 │   ├── QA_CHECKLIST.md, TESTE_USABILIDADE.md [OK] QA da interface
+│   ├── ROTEIRO_DEMONSTRACAO.md               [OK] Roteiro da demonstração (10 min)
 │   ├── Relatorio_Frontend_Raquel.docx        [OK] Relatório do frontend (binário)
 │   └── evidencias/                           [OK] Capturas de tela do QA
 ├── models/                               [OK] Contratos de dados (Pydantic)
@@ -116,15 +117,17 @@ sabor-da-terra/
 │   ├── test_chat_integracao.py               [OK] API → chat_service → agentes → serviços (LLM simulado)
 │   ├── test_chunker.py, test_ingestion.py    [OK] RAG: chunking e ingestão
 │   ├── test_document_repository_loader.py    [OK] Acervo real, repositório de documentos e loader
+│   ├── test_evalsets.py                      [OK] Valida evals/ e reexecuta a triagem determinística
 │   ├── test_documentos.py                    [OK] Consulta documental (2 casos ignorados com motivo)
 │   ├── test_estrutura.py                     [OK] Todos os módulos importam
 │   ├── test_frontend_estatico.py             [OK] Arquivos estáticos, tema e decoração
 │   ├── test_models_dados.py                  [OK] Modelos contra os dados reais
-│   ├── test_pedidos.py, test_triagem_service.py [OK] Validação e triagem determinísticas
+│   ├── test_pedidos.py, test_triagem_service.py, test_pendencias_finais.py [OK] Validação e triagem determinísticas, lotes, conversão de unidade e alertas
 │   ├── test_produtores.py                    [OK] Produtores e relatórios
 │   ├── test_repositories_dados.py            [OK] Repositórios de dados
 │   ├── test_retriever*.py, test_vector_store.py [OK] Recuperação e armazenamento vetorial
 │   └── test_storage*.py                      [OK] Storage e parsing de CSV/JSON
+├── evals/                                [OK] Conjuntos de avaliação do ADK (pedidos, documentos, produtores)
 ├── qa/                                   [OK] Ferramentas de QA da interface (Raquel)
 │   ├── mock_server.py                        [OK] Servidor simulado do chat (sem backend)
 │   ├── test_logica.js                        [OK] Testes da lógica do frontend (node)
@@ -336,6 +339,7 @@ HTML5, CSS3 e JavaScript puro. Chat conectado a `POST /api/chat`, com sugestões
 | `test_agents_*.py`, `llm_simulado.py` `[OK]` | Agentes com LLM simulado: ferramentas reais, `Runner` real, só o modelo é roteirizado |
 | `test_chat_integracao.py` `[OK]` | Fluxo API → `chat_service` → agentes → serviços → repositórios, erros 422/429/502/503, sessão |
 | `test_pedidos.py`, `test_triagem_service.py`, `test_produtores.py` `[OK]` | Regras determinísticas com os dados reais |
+| `test_pendencias_finais.py`, `test_evalsets.py` `[OK]` | Lotes no dossiê do produtor, conversão dúzia ↔ unidade, alertas estruturados, regressão de unidades com acento; eval sets do ADK e reexecução da triagem |
 | `test_documentos.py`, `test_document_repository_loader.py` `[OK]` | Consulta documental e acervo real; 2 casos ignorados (índice real; lotes) |
 | `test_chunker.py`, `test_ingestion.py`, `test_vector_store.py`, `test_retriever*.py` `[OK]` | Pipeline de RAG (qualidade com índice real só com `RUN_RETRIEVER_QUALITY=1`) |
 
@@ -459,7 +463,7 @@ A escolha entre as opções do índice vetorial será feita na fase do RAG.
 | 2 | Estrutura completa e documentação | Concluída |
 | 3 | Dados, modelos e repositórios (CSV/JSON) | Concluída |
 | 4 | Orquestrador, Agente de Pedidos e API de chat | Implementada e testada (LLM simulado); validada manualmente com o Gemini real (15 pedidos e 5 cenários) |
-| 5 | RAG e Agente de Documentos | Código implementado e testado; **índice vetorial não construído** e agente não validado com o Gemini real |
-| 6 | Agente de Produtores, relatórios e notificações | Implementada e testada (LLM simulado); não validada com o Gemini real |
+| 5 | RAG e Agente de Documentos | Implementado e testado; índice construído na máquina do David (não versionado) e agente validado manualmente com o Gemini real |
+| 6 | Agente de Produtores, relatórios e notificações | Implementada e testada; validada manualmente com o Gemini real (resumos, aviso e recusas) |
 | 7 | Interface de chat conectada à API | Implementada; QA manual pendente (ver `docs/QA_CHECKLIST.md`) |
 | Futuro | GCS, Docker, proteções de entrada e saída | Fora do escopo atual |

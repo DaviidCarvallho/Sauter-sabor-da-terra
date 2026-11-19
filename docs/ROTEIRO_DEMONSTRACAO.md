@@ -1,6 +1,6 @@
 # Roteiro da demonstração (10 minutos)
 
-Roteiro para a apresentação de 20 e 21/11/2026. Todas as mensagens abaixo foram executadas com o Gemini real em 19/11/2026 (a do pedido incompleto e a do P001 em variações próximas, ver `docs/AGENTES_E_TRIAGEM.md`, seção 9) e o comportamento descrito é o que se observou; o texto exato do modelo varia a cada execução.
+Roteiro para a apresentação de 20 e 21/11/2026. Todas as mensagens abaixo foram executadas com o Gemini real em 19/11/2026 (resultados em `docs/AGENTES_E_TRIAGEM.md`, seção 9) e o comportamento descrito é o que se observou; o texto exato do modelo varia a cada execução.
 
 ## Antes de começar
 
