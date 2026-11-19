@@ -2,7 +2,7 @@
 
 Este documento explica como o projeto está organizado, qual é a função de cada pasta e arquivo, e como as partes se comunicam. É o material de referência para apresentar a arquitetura.
 
-**Legenda:** `[OK]` implementado e testado · `[ESQ]` esqueleto (cabeçalho documentado, sem lógica) · `[DADOS]` depende de arquivos ainda não fornecidos.
+**Legenda:** `[OK]` implementado e testado · `[ESQ]` esqueleto (cabeçalho documentado, sem lógica; hoje só os controllers REST opcionais e o `gcs_storage.py`). Status conferido em 19/11/2026 contra o código (ver também `docs/ARQUITETURA_E_DECISOES_TECNICAS.md`).
 
 ---
 
@@ -37,9 +37,9 @@ sabor-da-terra/
 │   ├── prompts.py                            [OK] Instruções dos agentes
 │   ├── tools.py                              [OK] Ferramentas de pedidos (documentos e produtores pendentes)
 │   └── subagents/                            [OK] Especialistas
-│       ├── documentos_agent.py                   [ESQ] Agente de Documentos
+│       ├── documentos_agent.py                   [OK] Agente de Documentos
 │       ├── pedidos_agent.py                      [OK] Agente de Pedidos
-│       └── produtores_agent.py                   [ESQ] Agente de Produtores
+│       └── produtores_agent.py                   [OK] Agente de Produtores
 ├── api/                                  [OK] Camada HTTP
 │   ├── chat_controller.py                    [OK] POST /api/chat
 │   ├── documentos_controller.py              [ESQ] Rotas de documentos (opcional)
@@ -47,64 +47,88 @@ sabor-da-terra/
 │   ├── pedidos_controller.py                 [ESQ] Rotas de pedidos (opcional)
 │   └── produtores_controller.py              [ESQ] Rotas de produtores (opcional)
 ├── data/                                 [OK] Dados da cooperativa
-│   ├── financeiro.csv                        [DADOS] Transações set-out/2026
-│   ├── lotes.csv                             [DADOS] Rastreabilidade
-│   ├── pedidos.json                          [DADOS] 15 pedidos
-│   ├── produtores.csv                        [DADOS] 18 produtores
+│   ├── financeiro.csv                        [OK] Transações set-out/2026
+│   ├── lotes.csv                             [OK] Rastreabilidade
+│   ├── pedidos.json                          [OK] 15 pedidos
+│   ├── produtores.csv                        [OK] 18 produtores
 │   ├── README.md                             [OK] Arquivos esperados e situação
-│   ├── sazonalidade.csv                      [DADOS] Disponibilidade por mês
-│   ├── tabela_precos_outubro_2026.csv        [DADOS] Preços vigentes
-│   ├── certificacoes/                        [DADOS] Certificações e laudos
-│   ├── contratos/                            [DADOS] Contratos
-│   └── fichas_tecnicas/                      [DADOS] Fichas técnicas
+│   ├── sazonalidade.csv                      [OK] Disponibilidade por mês
+│   ├── tabela_precos_outubro_2026.csv        [OK] Preços vigentes
+│   ├── certificacoes/                        [OK] Certificações e laudos
+│   ├── contratos/                            [OK] Contratos
+│   └── fichas_tecnicas/                      [OK] Fichas técnicas
 ├── docs/                                 [OK] Documentação
-│   └── ESTRUTURA.md                          [OK] Este documento
+│   ├── ARQUITETURA_E_DECISOES_TECNICAS.md    [OK] Arquitetura, diagramas e decisões
+│   ├── AGENTES_E_TRIAGEM.md                  [OK] Agentes, ferramentas e triagem em detalhe
+│   ├── CONTRATOS_ARQUITETURAIS.md            [OK] Contratos entre camadas (Murilo)
+│   ├── CONEXAO_BACKEND.md                    [OK] Conexão frontend ↔ backend (Raquel)
+│   ├── DADOS.md                              [OK] Dicionário de dados (Arthur)
+│   ├── ESTRUTURA.md                          [OK] Este documento
+│   ├── PLANO_DE_TAREFAS.md                   [OK] Plano e checklist da equipe
+│   ├── QA_CHECKLIST.md, TESTE_USABILIDADE.md [OK] QA da interface
+│   ├── Relatorio_Frontend_Raquel.docx        [OK] Relatório do frontend (binário)
+│   └── evidencias/                           [OK] Capturas de tela do QA
 ├── models/                               [OK] Contratos de dados (Pydantic)
 │   ├── chat_model.py                         [OK] Requisição/resposta do chat
-│   ├── documento_model.py                    [ESQ] Trecho, fonte e resposta documental
+│   ├── documento_model.py                    [OK] Trecho, fonte e resposta documental
 │   ├── health_model.py                       [OK] Resposta do health
-│   ├── pedido_model.py                       [ESQ] Pedido bruto e estruturado
-│   ├── produto_model.py                      [ESQ] Produto, sazonalidade, preço, lote
-│   ├── produtor_model.py                     [ESQ] Produtor e financeiro
-│   └── relatorio_model.py                    [ESQ] Resumo e notificação
+│   ├── pedido_model.py                       [OK] Pedido bruto e estruturado
+│   ├── produto_model.py                      [OK] Produto, sazonalidade, preço, lote
+│   ├── produtor_model.py                     [OK] Produtor e financeiro
+│   └── relatorio_model.py                    [OK] Resumo e notificação
 ├── rag/                                  [OK] Consulta documental
-│   ├── chunker.py                            [ESQ] Divisão em trechos
-│   ├── document_loader.py                    [ESQ] PDF/DOCX → texto + metadados
-│   ├── ingestion.py                          [ESQ] Pipeline de indexação
-│   ├── retriever.py                          [ESQ] Busca top-k com fonte
-│   └── vector_store.py                       [ESQ] ChromaDB e embeddings
+│   ├── chunker.py                            [OK] Divisão em trechos
+│   ├── document_loader.py                    [OK] PDF/DOCX → texto + metadados
+│   ├── ingestion.py                          [OK] Pipeline de indexação
+│   ├── retriever.py                          [OK] Busca top-k com fonte
+│   └── vector_store.py                       [OK] ChromaDB e embeddings
 ├── repositories/                         [OK] Acesso a dados estruturados
-│   ├── document_repository.py                [ESQ] Documentos das 3 pastas
-│   ├── financeiro_repository.py              [ESQ] financeiro.csv
-│   ├── lote_repository.py                    [ESQ] lotes.csv
-│   ├── pedido_repository.py                  [ESQ] pedidos.json
-│   ├── produto_repository.py                 [ESQ] sazonalidade e preços
-│   ├── produtor_repository.py                [ESQ] produtores.csv
-│   └── storage_repository.py                 [ESQ] Parsing genérico de CSV/JSON
+│   ├── document_repository.py                [OK] Documentos das 3 pastas
+│   ├── financeiro_repository.py              [OK] financeiro.csv
+│   ├── lote_repository.py                    [OK] lotes.csv
+│   ├── pedido_repository.py                  [OK] pedidos.json
+│   ├── produto_repository.py                 [OK] sazonalidade e preços
+│   ├── produtor_repository.py                [OK] produtores.csv
+│   └── storage_repository.py                 [OK] Parsing genérico de CSV/JSON
 ├── services/                             [OK] Regras de negócio
 │   ├── chat_service.py                       [OK] Runner do ADK e sessão
 │   ├── triagem_service.py                    [OK] Prazo, urgência, tipo e ausências da triagem
-│   ├── documento_service.py                  [ESQ] Resposta com fontes e lotes
-│   ├── pedido_service.py                     [ESQ] Validações da triagem
-│   ├── produtor_service.py                   [ESQ] Cadastro, pedidos e financeiro
-│   └── relatorio_service.py                  [ESQ] Dados de resumos e notificações
+│   ├── documento_service.py                  [OK] Resposta com fontes e lotes
+│   ├── pedido_service.py                     [OK] Validações da triagem
+│   ├── produtor_service.py                   [OK] Cadastro, pedidos e financeiro
+│   └── relatorio_service.py                  [OK] Dados de resumos e notificações
 ├── static/                               [OK] Frontend
 │   ├── index.html                            [OK] Página
 │   ├── css/                                  [OK]
-│   │   └── style.css                             [OK] Estilos
+│   │   └── style.css                             [OK] Estilos (fundo branco, tema claro, verde)
+│   ├── img/                                  [OK]
+│   │   └── folhas.svg                            [OK] Ilustração decorativa de fundo
 │   └── js/                                   [OK]
 │       └── app.js                                [OK] Lógica do frontend
 ├── storage/                              [OK] Onde os arquivos ficam
 │   ├── base.py                               [OK] Interface Storage
 │   ├── gcs_storage.py                        [ESQ] Google Cloud Storage
 │   └── local_storage.py                      [OK] Disco local
-├── tests/                                [OK] Testes
-│   ├── test_api.py                           [OK] API, estáticos, docs
-│   ├── test_documentos.py                    [ESQ] RAG e fontes
+├── tests/                                [OK] Testes (ver docs/ARQUITETURA_E_DECISOES_TECNICAS.md, seção 14)
+│   ├── llm_simulado.py                       [OK] LLM roteirizado para testar agentes sem chamar o Gemini
+│   ├── test_agents_*.py                      [OK] Prompts, ferramentas, orquestração, documentos e produtores
+│   ├── test_api.py                           [OK] API, estáticos, docs, contrato do chat
+│   ├── test_chat_integracao.py               [OK] API → chat_service → agentes → serviços (LLM simulado)
+│   ├── test_chunker.py, test_ingestion.py    [OK] RAG: chunking e ingestão
+│   ├── test_document_repository_loader.py    [OK] Acervo real, repositório de documentos e loader
+│   ├── test_documentos.py                    [OK] Consulta documental (2 casos ignorados com motivo)
 │   ├── test_estrutura.py                     [OK] Todos os módulos importam
-│   ├── test_pedidos.py                       [ESQ] Triagem de pedidos
-│   ├── test_produtores.py                    [ESQ] Relatórios e notificações
-│   └── test_storage.py                       [OK] Storage local
+│   ├── test_frontend_estatico.py             [OK] Arquivos estáticos, tema e decoração
+│   ├── test_models_dados.py                  [OK] Modelos contra os dados reais
+│   ├── test_pedidos.py, test_triagem_service.py [OK] Validação e triagem determinísticas
+│   ├── test_produtores.py                    [OK] Produtores e relatórios
+│   ├── test_repositories_dados.py            [OK] Repositórios de dados
+│   ├── test_retriever*.py, test_vector_store.py [OK] Recuperação e armazenamento vetorial
+│   └── test_storage*.py                      [OK] Storage e parsing de CSV/JSON
+├── qa/                                   [OK] Ferramentas de QA da interface (Raquel)
+│   ├── mock_server.py                        [OK] Servidor simulado do chat (sem backend)
+│   ├── test_logica.js                        [OK] Testes da lógica do frontend (node)
+│   └── verificar_backend.py                  [OK] Verificador de contrato contra o backend real
 └── utils/                                [OK] Transversal
     ├── config.py                             [OK] Configuração centralizada
     └── logger.py                             [OK] Logging
@@ -195,11 +219,11 @@ flowchart LR
 |---|---|
 | `health_model.py` `[OK]` | Resposta do `/api/health` |
 | `chat_model.py` `[OK]` | Requisição e resposta do chat (user_id, sessão, mensagem; answer, agentes acionados, fontes) |
-| `pedido_model.py` `[ESQ]` | Pedido bruto e pedido estruturado: itens, prazo, comprador, tipo, urgência, alertas |
-| `produtor_model.py` `[ESQ]` | Produtor e transação financeira |
-| `produto_model.py` `[ESQ]` | Produto, sazonalidade, preço e lote |
-| `documento_model.py` `[ESQ]` | Trecho recuperado, fonte e resposta documental |
-| `relatorio_model.py` `[ESQ]` | Resumo individual do produtor e notificação |
+| `pedido_model.py` `[OK]` | Pedido bruto e pedido estruturado: itens, prazo, comprador, tipo, urgência, alertas |
+| `produtor_model.py` `[OK]` | Produtor e transação financeira |
+| `produto_model.py` `[OK]` | Produto, sazonalidade, preço e lote |
+| `documento_model.py` `[OK]` | Trecho recuperado, fonte e resposta documental |
+| `relatorio_model.py` `[OK]` | Resumo individual do produtor e notificação |
 
 Os campos dos modelos de dados serão definidos **a partir das colunas reais** dos arquivos da cooperativa, e não de suposições.
 
@@ -213,10 +237,10 @@ Os campos dos modelos de dados serão definidos **a partir das colunas reais** d
 |---|---|
 | `chat_service.py` `[OK]` | Liga a API ao agente: executa o Runner do ADK mantendo a sessão |
 | `triagem_service.py` `[OK]` | Resolve prazos, classifica urgência e tipo e registra informações ausentes; usa o `pedido_service` |
-| `pedido_service.py` `[ESQ]` | Validações da triagem: safra, capacidade, urgência, tipo, ambiguidades |
-| `documento_service.py` `[ESQ]` | Resposta documental com fontes; rastreabilidade de lotes; "evidência insuficiente" |
-| `produtor_service.py` `[ESQ]` | Cadastro, pedidos e financeiro de um produtor |
-| `relatorio_service.py` `[ESQ]` | Dados do resumo individual e da notificação |
+| `pedido_service.py` `[OK]` | Validações da triagem: safra, capacidade, urgência, tipo, ambiguidades |
+| `documento_service.py` `[OK]` | Consulta documental com fontes e "evidência insuficiente" (limiar de distância 0,30). **Rastreabilidade de lotes: pendente** |
+| `produtor_service.py` `[OK]` | Cadastro, pedidos e financeiro de um produtor |
+| `relatorio_service.py` `[OK]` | Dados do resumo individual e da notificação |
 
 ### `agents/`: o "cérebro" (Google ADK)
 
@@ -225,12 +249,12 @@ Os campos dos modelos de dados serão definidos **a partir das colunas reais** d
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `agent.py` `[ESQ]` | `root_agent`: orquestrador que registra os 3 especialistas como `AgentTool` |
+| `agent.py` `[OK]` | `root_agent`: orquestrador que registra os 3 especialistas como `AgentTool` |
 | `prompts.py` `[OK]` | Instruções dos agentes, separadas do código |
 | `tools.py` `[OK]` | Funções Python tipadas e com docstring que o modelo pode chamar. Finas: chamam um serviço |
-| `subagents/pedidos_agent.py` `[ESQ]` | Interpreta pedidos em português coloquial |
-| `subagents/documentos_agent.py` `[ESQ]` | Responde com base nos documentos, citando fontes |
-| `subagents/produtores_agent.py` `[ESQ]` | Gera resumos e redige notificações |
+| `subagents/pedidos_agent.py` `[OK]` | Interpreta pedidos em português coloquial |
+| `subagents/documentos_agent.py` `[OK]` | Responde com base nos documentos, citando fontes |
+| `subagents/produtores_agent.py` `[OK]` | Gera resumos e redige notificações |
 
 A docstring de cada ferramenta é o que o modelo lê para decidir quando usá-la. Por isso é parte do comportamento do sistema, não só documentação.
 
@@ -241,11 +265,11 @@ A docstring de cada ferramenta é o que o modelo lê para decidir quando usá-la
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `document_loader.py` `[ESQ]` | PDF/DOCX → texto + metadados (arquivo, tipo, página) |
-| `chunker.py` `[ESQ]` | Divide o texto em trechos preservando a origem |
-| `vector_store.py` `[ESQ]` | **Único** módulo que conhece o ChromaDB e os embeddings |
-| `retriever.py` `[ESQ]` | Busca os trechos mais relevantes (top-k), com fonte e score |
-| `ingestion.py` `[ESQ]` | Pipeline completo: listar → carregar → dividir → embeddings → gravar. Executável como comando e repetível |
+| `document_loader.py` `[OK]` | PDF/DOCX → texto + metadados (arquivo, tipo, página) |
+| `chunker.py` `[OK]` | Divide o texto em trechos preservando a origem |
+| `vector_store.py` `[OK]` | **Único** módulo que conhece o ChromaDB e os embeddings |
+| `retriever.py` `[OK]` | Busca os trechos mais relevantes (top-k), com fonte e score |
+| `ingestion.py` `[OK]` | Pipeline completo: listar → carregar → dividir → embeddings → gravar. Executável como comando e repetível |
 
 Fluxo de **construção do índice** (offline, por comando): `ingestion` → `document_repository` → `document_loader` → `chunker` → `vector_store`.
 Fluxo de **consulta** (a cada pergunta): `documento_service` → `retriever` → `vector_store`.
@@ -258,13 +282,13 @@ Fluxo de **consulta** (a cada pergunta): `documento_service` → `retriever` →
 
 | Arquivo | Fonte | Responsabilidade |
 |---|---|---|
-| `storage_repository.py` `[ESQ]` | (genérico) | Parsing de CSV/JSON via `Storage`, compartilhado pelos demais |
-| `produtor_repository.py` `[ESQ]` `[DADOS]` | `produtores.csv` | Listar e buscar produtores |
-| `pedido_repository.py` `[ESQ]` `[DADOS]` | `pedidos.json` | Listar e buscar pedidos (somente leitura na v1) |
-| `financeiro_repository.py` `[ESQ]` `[DADOS]` | `financeiro.csv` | Transações e pendências por produtor |
-| `produto_repository.py` `[ESQ]` `[DADOS]` | `sazonalidade.csv`, `tabela_precos_outubro_2026.csv` | Safra e preços |
-| `lote_repository.py` `[ESQ]` `[DADOS]` | `lotes.csv` | Rastreabilidade |
-| `document_repository.py` `[ESQ]` `[DADOS]` | `certificacoes/`, `contratos/`, `fichas_tecnicas/` | Lista e entrega os bytes dos documentos |
+| `storage_repository.py` `[OK]` | (genérico) | Parsing de CSV/JSON via `Storage`, compartilhado pelos demais |
+| `produtor_repository.py` `[OK]` | `produtores.csv` | Listar e buscar produtores |
+| `pedido_repository.py` `[OK]` | `pedidos.json` | Listar e buscar pedidos (somente leitura na v1) |
+| `financeiro_repository.py` `[OK]` | `financeiro.csv` | Transações e pendências por produtor |
+| `produto_repository.py` `[OK]` | `sazonalidade.csv`, `tabela_precos_outubro_2026.csv` | Safra e preços |
+| `lote_repository.py` `[OK]` | `lotes.csv` | Rastreabilidade |
+| `document_repository.py` `[OK]` | `certificacoes/`, `contratos/`, `fichas_tecnicas/` | Lista e entrega os bytes dos documentos |
 
 Trocar CSV/JSON por um banco de dados no futuro significa reescrever **apenas** estes arquivos.
 
@@ -282,17 +306,18 @@ Trocar CSV/JSON por um banco de dados no futuro significa reescrever **apenas** 
 
 ### `data/`: dados da cooperativa
 
-Arquivos CSV/JSON e documentos fictícios fornecidos no enunciado. Veja `data/README.md` para a lista e a situação de cada um. Nada aqui é inventado: se o arquivo não chegou, ele não existe.
+Arquivos CSV/JSON e documentos fictícios fornecidos no enunciado (6 estruturados e 20 documentos em `certificacoes/`, `contratos/` e `fichas_tecnicas/`). Veja `data/README.md` e `docs/DADOS.md`. Nada aqui é inventado nem editado.
 
 ### `static/`: frontend
 
-HTML5, CSS3 e JavaScript puro. Hoje mostra a identidade visual e o status do servidor. A interface de chat será conectada a `POST /api/chat`.
+HTML5, CSS3 e JavaScript puro. Chat conectado a `POST /api/chat`, com sugestões, estados de carregamento e erro, sessão preservada no navegador, fontes e agentes acionados. Visual: fundo branco, tema sempre claro e acentos verdes.
 
 | Arquivo | Responsabilidade |
 |---|---|
 | `index.html` `[OK]` | Estrutura da página |
 | `css/style.css` `[OK]` | Estilos |
-| `js/app.js` `[OK]` | Consulta `/api/health`; receberá a lógica do chat |
+| `js/app.js` `[OK]` | Consulta `/api/health` e implementa o chat (envio, sessão, erros, fontes) |
+| `img/folhas.svg` `[OK]` | Ilustração decorativa de fundo (só telas largas) |
 
 ### `utils/`: transversal
 
@@ -308,7 +333,11 @@ HTML5, CSS3 e JavaScript puro. Hoje mostra a identidade visual e o status do ser
 | `test_api.py` `[OK]` | `/api/health`, página inicial, estáticos, documentação automática |
 | `test_storage.py` `[OK]` | Leitura, listagem, erros e bloqueio de `../` |
 | `test_estrutura.py` `[OK]` | Todos os módulos da estrutura existem e importam |
-| `test_pedidos.py`, `test_documentos.py`, `test_produtores.py` `[ESQ]` | Casos previstos documentados; ficam *skipped* até a fase correspondente |
+| `test_agents_*.py`, `llm_simulado.py` `[OK]` | Agentes com LLM simulado: ferramentas reais, `Runner` real, só o modelo é roteirizado |
+| `test_chat_integracao.py` `[OK]` | Fluxo API → `chat_service` → agentes → serviços → repositórios, erros 422/429/502/503, sessão |
+| `test_pedidos.py`, `test_triagem_service.py`, `test_produtores.py` `[OK]` | Regras determinísticas com os dados reais |
+| `test_documentos.py`, `test_document_repository_loader.py` `[OK]` | Consulta documental e acervo real; 2 casos ignorados (índice real; lotes) |
+| `test_chunker.py`, `test_ingestion.py`, `test_vector_store.py`, `test_retriever*.py` `[OK]` | Pipeline de RAG (qualidade com índice real só com `RUN_RETRIEVER_QUALITY=1`) |
 
 ---
 
@@ -366,7 +395,7 @@ A escolha entre as opções do índice vetorial será feita na fase do RAG.
 | Sinalizar produto fora de safra e quantidade acima da capacidade | `pedido_service` (código determinístico) |
 | Responder sobre o acervo indicando o documento de origem | `rag/` + `documento_service` + `models/documento_model.py` |
 | Dizer claramente quando não souber, sem inventar | Limiar de evidência no `documento_service` + regras em `prompts.py` |
-| Rastreabilidade de lote | `lote_repository` + `documento_service` |
+| Rastreabilidade de lote | `lote_repository` + `documento_service` (**pendente**: nenhum agente consulta `lotes.csv` ainda) |
 | Gerar relatórios e notificações de forma autônoma | `relatorio_service` + Agente de Produtores |
 | Manter o contexto ao longo da sessão | Sessão por usuário em `chat_service` |
 
@@ -394,12 +423,24 @@ A escolha entre as opções do índice vetorial será feita na fase do RAG.
 - **Qualidade do RAG depende do chunking e dos embeddings**, que serão calibrados com os documentos reais.
 - **Erros semânticos de extração:** os serviços detectam inconsistências de fato (safra, capacidade), mas não conseguem saber se o LLM entendeu o pedido errado.
 - **Notificações só são redigidas**, não enviadas.
-- **Nada de dados da cooperativa foi usado até agora:** os arquivos ainda não foram fornecidos.
+- **Free Tier do Gemini:** limite baixo de requisições por minuto; o chat devolve 429 amigável quando é atingido.
+- **Índice vetorial não versionado:** cada máquina precisa rodar `python -m rag.ingestion` (usa a API de embeddings); sem ele o Agente de Documentos responde "evidência insuficiente".
+- **Rastreabilidade de lotes** ainda não é coberta por nenhum agente.
 
 ## 11. Decisões em aberto
 
-| Decisão | Depende de |
-|---|---|
+| Decisão | Situação | Depende de |
+|---|---|---|
+| Modelo Gemini (`MODEL`) | `gemini-3.5-flash-lite` (confirmado na documentação oficial e validado com chamadas reais) | — |
+| Modelo de embeddings | Em uso: `gemini-embedding-001` (`rag/vector_store.py`); disponibilidade na conta não verificada | Rawan |
+| Tamanho e sobreposição dos chunks | Valores atuais em `rag/chunker.py`; não calibrados com índice real | Rawan |
+| Valores de "tipo" e "urgência" de pedido | Proposta implementada em `services/triagem_service.py` | Murilo e equipe |
+| Limiar para "evidência insuficiente" | 0,30 (o mesmo dos testes do retriever); não calibrado | Rawan |
+| Nomes dos campos do chat | `user_id`/`answer` implementados; documento de contratos usa `user`/`message` como exemplo | Murilo |
+| Persistir pedidos processados | Em aberto | Decisão do projeto |
+| Quais controllers REST opcionais ativar | Nenhum ativado; a interface só usa `POST /api/chat` | Necessidade da interface |
+
+---|---|
 | Modelo Gemini (`MODEL`) | Escolha na lista vigente do AI Studio |
 | Modelo de embeddings | Qualidade com os documentos reais e custo |
 | Tamanho e sobreposição dos chunks | Teste com os documentos reais |
@@ -415,10 +456,10 @@ A escolha entre as opções do índice vetorial será feita na fase do RAG.
 | Fase | Entrega | Situação |
 |---|---|---|
 | 1 | Fundação: FastAPI, configuração, `/api/health`, storage local, frontend mínimo | Concluída |
-| 2 | Estrutura completa e documentação | Esta entrega |
-| 3 | Dados e repositórios (CSV/JSON) e modelos | Pendente (depende dos arquivos de `data/`) |
-| 4 | Orquestrador, Agente de Pedidos e API de chat | Pendente |
-| 5 | RAG e Agente de Documentos | Pendente |
-| 6 | Agente de Produtores, relatórios e notificações | Pendente |
-| 7 | Interface de chat conectada à API | Pendente |
+| 2 | Estrutura completa e documentação | Concluída |
+| 3 | Dados, modelos e repositórios (CSV/JSON) | Concluída |
+| 4 | Orquestrador, Agente de Pedidos e API de chat | Implementada e testada (LLM simulado); validada com o Gemini real em 5 cenários |
+| 5 | RAG e Agente de Documentos | Código implementado e testado; **índice vetorial não construído** e agente não validado com o Gemini real |
+| 6 | Agente de Produtores, relatórios e notificações | Implementada e testada (LLM simulado); não validada com o Gemini real |
+| 7 | Interface de chat conectada à API | Implementada; QA manual pendente (ver `docs/QA_CHECKLIST.md`) |
 | Futuro | GCS, Docker, proteções de entrada e saída | Fora do escopo atual |
