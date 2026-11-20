@@ -216,5 +216,3 @@ Plano de trabalho por integrante: [`docs/PLANO_DE_TAREFAS.md`](docs/PLANO_DE_TAR
 - **Conversões de unidade:** só dúzia ↔ unidade; maço, caixa etc. ficam sem valor estimado (decisão da equipe).
 - **Instabilidade do Gemini:** erros transitórios (503 "alta demanda") aparecem como falha 502 e exigem repetir a mensagem.
 - **Google Cloud Storage** e os controllers opcionais de pedidos, documentos e produtores são esqueletos.
-- As capturas em `docs/evidencias/` e o relatório do frontend mostram o visual anterior (tema escuro).
-- Prazos: entrega da arquitetura em 19/11/2026; demonstração em 20 e 21/11/2026.
