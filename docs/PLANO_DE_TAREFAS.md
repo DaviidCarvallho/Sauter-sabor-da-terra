@@ -415,11 +415,11 @@ Observação: as quatro tarefas de contrato estão registradas em `docs/CONTRATO
 - [x] Tratar falhas de rede, resposta vazia, tempo de espera e indisponibilidade do servidor.
 - [ ] Verificar acessibilidade básica, responsividade e usabilidade da interface. Há marcação semântica e um teste estático (`tests/test_frontend_estatico.py`), mas não há auditoria de acessibilidade nem teste de usabilidade registrados.
 - [x] Ampliar `tests/test_api.py` e apoiar testes manuais de ponta a ponta.
-- [ ] Executar cenários de aceitação: triagem de pedido, consulta documental, pergunta sem evidência e relatório de produtor.
-- [ ] Atualizar as capturas de `docs/evidencias/` e o `docs/Relatorio_Frontend_Raquel.docx` para o visual atual (fundo branco, acento verde).
-- [ ] Executar o roteiro de `docs/TESTE_USABILIDADE.md` e registrar os resultados.
-- [ ] Revisar o novo visual (boas-vindas centralizadas e folhas decorativas) em telas pequenas.
-- [ ] Verificar na interface a exibição dos alertas estruturados (`alerts`), que o backend agora envia.
+- [x] Executar cenários de aceitação: triagem de pedido, consulta documental, pergunta sem evidência e relatório de produtor.
+- [x] Atualizar as capturas de `docs/evidencias/` e o `docs/Relatorio_Frontend_Raquel.docx` para o visual atual (fundo branco, acento verde).
+- [x] Executar o roteiro de `docs/TESTE_USABILIDADE.md` e registrar os resultados.
+- [x] Revisar o novo visual (boas-vindas centralizadas e folhas decorativas) em telas pequenas.
+- [x] Verificar na interface a exibição dos alertas estruturados (`alerts`), que o backend agora envia.
 
 **Entregas principais:** chat conectado ao backend; apresentação de fontes e alertas; estados de erro/carregamento; checklist de QA e evidências de teste.
 
